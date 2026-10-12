@@ -1,0 +1,40 @@
+import { describe, expect, it } from "vitest";
+import { applyTaskPatch, createTaskSchema, makeTask, sortTasks, taskFieldsSchema, taskSchema } from "../src/features/tasks/domain/task";
+
+const input = createTaskSchema.parse({ id: "be7f3440-3868-4e48-90fb-f2e8dbce5b26", title: "  Read a chapter  " });
+const first = "2026-10-12T10:00:00.000Z";
+const later = "2026-10-13T10:00:00.000Z";
+
+describe("task lifecycle", () => {
+  it("captures a title-only task in Todo with safe defaults", () => {
+    expect(makeTask(input, first)).toMatchObject({ title: "Read a chapter", status: "todo", notes: "", due_date: null, completed_at: null, starred: false });
+  });
+  it("allows direct completion, preserves completion time on edits, and clears it on reopening", () => {
+    const done = applyTaskPatch(makeTask(input, first), { status: "done" }, later);
+    expect(done.completed_at).toBe(later);
+    expect(applyTaskPatch(done, { notes: "Finished!" }, first).completed_at).toBe(later);
+    expect(applyTaskPatch(done, { status: "todo" }, later).completed_at).toBeNull();
+  });
+  it("allows moving backward while preserving task details", () => {
+    const task = applyTaskPatch(makeTask(input, first), { status: "in_progress", notes: "Start here", due_date: "2026-10-20" }, later);
+    expect(applyTaskPatch(task, { status: "todo" }, later)).toMatchObject({ notes: "Start here", due_date: "2026-10-20", status: "todo" });
+  });
+  it("restores a soft-deleted task without changing its identity", () => {
+    const deleted = applyTaskPatch(makeTask(input, first), { deleted_at: later }, later);
+    expect(applyTaskPatch(deleted, { deleted_at: null }, later)).toMatchObject({ id: input.id, title: input.title, deleted_at: null });
+  });
+  it("rejects empty titles, impossible dates, and unknown properties", () => {
+    expect(taskFieldsSchema.safeParse({ title: "  " }).success).toBe(false);
+    expect(taskFieldsSchema.safeParse({ title: "Plan", due_date: "2026-02-30" }).success).toBe(false);
+    expect(createTaskSchema.safeParse({ ...input, owner: "someone" }).success).toBe(false);
+  });
+  it("accepts Supabase timestamps with UTC offsets", () => {
+    expect(taskSchema.safeParse({ ...makeTask(input, first), created_at: "2026-10-13T10:00:00+00:00" }).success).toBe(true);
+  });
+  it("puts important active tasks first and recent completions first", () => {
+    const plain = makeTask(input, first);
+    const starred = { ...plain, id: "d2e80888-53ec-419d-aea0-54beb67d77b3", starred: true };
+    expect(sortTasks([plain, starred], "todo")[0].id).toBe(starred.id);
+    expect(sortTasks([{ ...plain, completed_at: first }, { ...starred, completed_at: later }], "done")[0].id).toBe(starred.id);
+  });
+});
