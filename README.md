@@ -1,10 +1,39 @@
-# Little list
+# Little List
 
-A responsive personal todo notebook with warm light and dark themes. Built with Next.js App Router, TypeScript, Tailwind CSS, Radix primitives, and Supabase Postgres.
+Little List is a calm, responsive task manager for capturing everyday work without unnecessary clutter. Its warm notebook-inspired interface works across desktop and mobile, with light, dark, and system themes.
 
-## Run locally
+## Features
 
-Use Node.js 24 LTS (`nvm use`), or at least Node.js 22.13.
+- Organize tasks across **Todo**, **In progress**, and **Done**.
+- Move tasks between statuses while preserving their details.
+- Add notes, due dates, stars, and a **Focus today** flag.
+- Break work into nested subtasks or move an existing task beneath another task.
+- Search task titles and notes within the active status.
+- Sort active tasks by importance and completed tasks by completion time.
+- Undo recent additions, edits, moves, and deletions.
+- Export the current task list as JSON.
+- Use keyboard shortcuts: `N` for a new task and `/` for search.
+- Choose a light, dark, or system-matched theme.
+- Store tasks in the browser or connect a Supabase database for cloud storage.
+
+## Technology
+
+- [Next.js](https://nextjs.org/) with the App Router
+- [React](https://react.dev/) and TypeScript
+- [Supabase](https://supabase.com/) Postgres for optional cloud persistence
+- [Zod](https://zod.dev/) for runtime validation
+- [Radix UI](https://www.radix-ui.com/) primitives and Lucide icons
+- Tailwind CSS utilities with project-specific global styles
+- Vitest for automated tests
+
+## Getting started
+
+### Requirements
+
+- Node.js 24 LTS, or Node.js 22.13 or newer
+- npm
+
+### Run locally
 
 ```sh
 npm install
@@ -12,67 +41,79 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open the address printed by Next.js. With both Supabase variables empty, the app uses browser local storage. This mode works immediately, but each browser has a separate list. Clearing browser storage removes that browser's tasks. Export the list to keep a copy.
+Open the local address printed in the terminal. The example configuration sets `APP_STORAGE_MODE=local`, which stores tasks in the browser. Browser storage is specific to each browser and device.
 
-## Connect the backend
+## Supabase setup
 
-1. Create a free Supabase project.
-2. Run `supabase/migrations/202610130001_create_tasks.sql` in its SQL editor (or apply it through the Supabase CLI).
-3. Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`.
-4. Restart the app. The footer should say **Cloud storage**.
+Supabase is optional for local development. To enable shared cloud storage:
 
-Use a modern server secret key (`sb_secret_...`) from Supabase **Settings > API Keys** as the value of `SUPABASE_SERVICE_ROLE_KEY`. The variable name is retained for compatibility; the installed Supabase SDK supports modern secret keys. A legacy `service_role` key also works, but Supabase recommends modern secret keys for new setups. Keep it private; never add a `NEXT_PUBLIC_` prefix. Both values are required together. The app does not silently fall back to local storage when a configured backend fails.
+1. Create a Supabase project.
+2. Open the Supabase SQL Editor.
+3. Run the files in `supabase/migrations/` in filename order. Apply each migration only once.
+4. Copy `.env.example` to `.env.local` if you have not already done so.
+5. Select cloud storage and add the project URL and server secret to `.env.local`:
 
-Local tasks are not automatically migrated when connecting Supabase. Export them first and recreate them in the cloud notebook. JSON import is not implemented in this version.
+```env
+APP_STORAGE_MODE=cloud
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_your_server_secret
+```
 
-## Deploy on Vercel
+6. Restart the development server.
 
-Push this project to your personal Git repository, import it into Vercel, and use the Next.js preset. Set both server environment variables for Production and any Preview environments that should use cloud storage. Run the database migration before deployment.
+Use a modern `sb_secret_...` key from **Supabase → Settings → API Keys**. Keep this value private and never prefix it with `NEXT_PUBLIC_`. When cloud mode and both credentials are configured, the footer displays **Cloud storage**.
 
-Preview deployments using the same Supabase project share production tasks. Leave preview variables unset for isolated browser-local previews, or use a separate database project. No Vercel or Supabase deployment has been created by this repository alone.
+Tasks already stored in the browser are not automatically copied to Supabase. Export them before switching storage modes if you want to retain a backup.
 
-This version deliberately has no login or private-link protection. The cloud list is shared by every visitor. The task API is public and permits reading and modifying the list, including from scripts. Origin checks discourage cross-site browser writes; they are not authentication or abuse protection. `noindex` is not access control. Use a dedicated database project and avoid sensitive content. Add authentication and per-user ownership before opening this to an audience.
+## Available commands
 
-Supabase free projects can be paused after a seven-day period of low database activity. Resume a paused project in its dashboard. See https://supabase.com/docs/guides/platform/free-project-pausing.
+```sh
+npm run dev          # Start the development server
+npm run build        # Create a production build
+npm run start        # Run the production build
+npm run typecheck    # Check TypeScript
+npm run lint         # Run ESLint and the formatting check
+npm test             # Run the test suite
+npm run format       # Format changed files
+npm run format:check # Check formatting without changing files
+```
 
-## Organization
+## Project structure
 
 ```text
 src/
-  app/                         Pages, layouts, global theme, HTTP route handlers
-  components/                  Shared theme controls and accessible UI primitives
+  app/                         Routes, layouts, global styles, and API handlers
+  components/                  Shared interface and theme components
   features/tasks/
-    domain/                    Types, validation, transitions, date/sort helpers
-    server/                    Server-only repository and HTTP error handling
-    client/                    Cloud and browser-local storage adapters
-    hooks/                     Optimistic updates, rollback, refresh, and undo
-    components/                Workspace, task rows, and editor
+    client/                    Browser and cloud storage gateways
+    components/                Task workspace, rows, and editor
+    domain/                    Task types, validation, sorting, and rules
+    hooks/                     Task state, optimistic updates, and undo
+    server/                    Database repository and HTTP helpers
   lib/                         Shared utilities
-supabase/migrations/           Versioned schema, constraints, timestamps, access rules
-tests/                         Task rules, persistence, and HTTP regression tests
+supabase/migrations/           Versioned database changes
+tests/                         Domain, persistence, API, and regression tests
 ```
 
-The UI depends on a storage interface, not the Supabase SDK. Route handlers validate requests; the server repository handles database operations. SQL constraints and a trigger enforce task state and completion timestamps. Row-level security blocks direct anonymous database access; the server service role accesses the table.
+The interface talks to a storage gateway, allowing the same task experience to work with browser storage or the server API. API handlers validate incoming data before the repository writes to Supabase. Database constraints provide an additional layer of data integrity.
 
-## Behavior
+## Deployment
 
-- Todo, In progress, and Done tabs; any task can move to any status.
-- Quick capture; notes, due dates, stars, and a separate Focus today flag.
-- Search title and notes within the selected status; starred active tasks sort first, completed tasks sort by completion time.
-- Optimistic changes with rollback on failure. Mutations are serialized to avoid conflicting local state updates.
-- One-step undo for adding, editing, moving, and deleting. Deletes are soft deletes; undo survives only in the current page session. Soft-deleted records remain in storage; automated cleanup is not configured.
-- Light, dark, and system themes, persisted on each device.
-- Keyboard shortcuts: `N` to capture, `/` to search, arrows to navigate status tabs.
-- Refresh on window focus/visibility and browser storage changes. Cloud synchronization occurs when the app opens or regains focus, not continuously in real time. Concurrent edits use last-write-wins.
-- JSON export of currently loaded, non-deleted tasks.
+Little List can be deployed as a standard Next.js application on Vercel:
 
-## Checks
+1. Push the repository to a Git provider.
+2. Import the repository into Vercel.
+3. Keep the detected Next.js build settings.
+4. Set `APP_STORAGE_MODE=cloud`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` in the desired Vercel environments.
+5. Apply the Supabase migrations before using the deployed application.
 
-```sh
-npm run typecheck
-npm run lint
-npm test
-npm run build
-```
+With `APP_STORAGE_MODE=local`, each visitor receives a separate browser-local list. With the current cloud setup, the database list is shared because user accounts and per-user ownership are not implemented yet. Do not store sensitive information or make a cloud-backed deployment public until authentication is added.
 
-Commit `package-lock.json` for reproducible installations. Supabase integration requires a real project and configured credentials; local tests do not prove a hosted database connection.
+## Data behavior
+
+- Changes appear immediately and roll back if persistence fails.
+- Mutations run in sequence to avoid conflicting updates in the same browser session.
+- The app refreshes cloud data when the page opens or regains focus.
+- Concurrent edits use last-write-wins behavior.
+- Deletion is soft, and one-step undo is available during the current page session.
+- Completing a parent task does not automatically complete its subtasks.
