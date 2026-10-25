@@ -2,6 +2,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { TaskRepositoryError } from "./repository";
+import { AuthenticationRequiredError } from "@/features/auth/server/session";
 
 export function checkMutationOrigin(request: Request): NextResponse | null {
   const origin = request.headers.get("origin");
@@ -38,6 +39,11 @@ export async function readJson(request: Request): Promise<unknown> {
 }
 
 export function errorResponse(error: unknown) {
+  if (error instanceof AuthenticationRequiredError)
+    return NextResponse.json(
+      { error: error.message },
+      { status: 401, headers: { "Cache-Control": "no-store" } },
+    );
   if (error instanceof ZodError)
     return NextResponse.json(
       { error: error.issues[0]?.message ?? "Invalid task." },

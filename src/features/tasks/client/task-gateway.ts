@@ -46,6 +46,10 @@ async function request(path: string, options?: RequestInit): Promise<unknown> {
     headers: { "Content-Type": "application/json" },
   });
   const body = await response.json().catch(() => null);
+  if (response.status === 401) {
+    window.location.replace("/login");
+    throw new Error("Your session expired. Please sign in again.");
+  }
   if (!response.ok)
     throw new Error(body?.error ?? "Could not connect. Please try again.");
   return body;

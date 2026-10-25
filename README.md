@@ -16,7 +16,8 @@ Little List is a calm, responsive task manager for capturing everyday work witho
 - Export the current task list as JSON.
 - Use keyboard shortcuts: `N` for a new task and `/` for search.
 - Choose a light, dark, or system-matched theme.
-- Store tasks in the browser or connect a Supabase database for cloud storage.
+- Sign in with Google for a private cloud notebook, shared across your own devices.
+- Store tasks in the browser for a login-free local development mode.
 
 ## Technology
 
@@ -47,25 +48,20 @@ Open the local address printed in the terminal. The example configuration sets `
 
 ## Supabase setup
 
-Supabase is optional for local development. To enable shared cloud storage:
+Supabase is optional in local mode. Cloud mode uses Google sign-in and database-enforced task ownership. Follow [the authentication setup guide](docs/auth-setup.md) to configure Google, Supabase, environment variables, migrations, and your existing tasks.
 
-1. Create a Supabase project.
-2. Open the Supabase SQL Editor.
-3. Run the files in `supabase/migrations/` in filename order. Apply each migration only once.
-4. Copy `.env.example` to `.env.local` if you have not already done so.
-5. Select cloud storage and add the project URL and server secret to `.env.local`:
+Cloud configuration:
 
 ```env
 APP_STORAGE_MODE=cloud
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=sb_secret_your_server_secret
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_key
+APP_URL=http://localhost:3000
 ```
 
-6. Restart the development server.
+Use your deployed HTTPS origin for `APP_URL` on Vercel. The app no longer uses `SUPABASE_SERVICE_ROLE_KEY`: normal task access uses the signed-in user's session and Row Level Security. Never substitute a secret key for the publishable key.
 
-Use a modern `sb_secret_...` key from **Supabase → Settings → API Keys**. Keep this value private and never prefix it with `NEXT_PUBLIC_`. When cloud mode and both credentials are configured, the footer displays **Cloud storage**.
-
-Tasks already stored in the browser are not automatically copied to Supabase. Export them before switching storage modes if you want to retain a backup.
+Browser-local tasks are not automatically copied to Supabase. Existing cloud tasks require an explicit administrator assignment to your account, described in the setup guide.
 
 ## Available commands
 
@@ -106,10 +102,10 @@ Little List can be deployed as a standard Next.js application on Vercel:
 1. Push the repository to a Git provider.
 2. Import the repository into Vercel.
 3. Keep the detected Next.js build settings.
-4. Set `APP_STORAGE_MODE=cloud`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` in the desired Vercel environments.
+4. Set `APP_STORAGE_MODE=cloud`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `APP_URL` in the desired Vercel environments.
 5. Apply the Supabase migrations before using the deployed application.
 
-With `APP_STORAGE_MODE=local`, each visitor receives a separate browser-local list. With the current cloud setup, the database list is shared because user accounts and per-user ownership are not implemented yet. Do not store sensitive information or make a cloud-backed deployment public until authentication is added.
+With `APP_STORAGE_MODE=local`, each browser has its own list without login; it is not an account-isolation mode on a shared device. In cloud mode, Google login is required and each account can access only its own tasks. Coordinate the authentication migration and deployment as described in [the setup guide](docs/auth-setup.md).
 
 ## Data behavior
 

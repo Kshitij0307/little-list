@@ -18,7 +18,13 @@ import { ThemeMenu } from "@/components/theme-menu";
 import { Button } from "@/components/ui/button";
 import { localDate, mainTasks } from "../domain/task";
 import { useTaskContext } from "../hooks/tasks-provider";
-export function TaskWorkspace({ children }: { children: ReactNode }) {
+export function TaskWorkspace({
+  children,
+  account,
+}: {
+  children: ReactNode;
+  account?: ReactNode;
+}) {
   const { mode, tasks, loading, busy, error, undoAction, undo, dismissUndo } =
     useTaskContext();
   const isDetail = usePathname() !== "/";
@@ -80,6 +86,7 @@ export function TaskWorkspace({ children }: { children: ReactNode }) {
             Less noise. More doing.
           </span>
           <ThemeMenu />
+          {account}
         </div>
       </header>
 
@@ -150,7 +157,7 @@ export function TaskWorkspace({ children }: { children: ReactNode }) {
           <span className={workspaceStyles["storage-note"]}>
             {mode === "cloud" ? <Cloud size={14} /> : <HardDrive size={14} />}
             {mode === "cloud"
-              ? "Shared notebook · Cloud storage"
+              ? "Private notebook · Cloud storage"
               : "Local notebook · This browser only"}
           </span>
           <Button

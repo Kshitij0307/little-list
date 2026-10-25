@@ -1,5 +1,6 @@
 import "server-only";
-import { createClient } from "@supabase/supabase-js";
+import { requireTaskSession } from "@/features/auth/server/session";
+export { storageMode } from "@/lib/supabase/config";
 import {
   createTaskSchema,
   taskSchema,
@@ -11,40 +12,8 @@ import {
 
 export class TaskRepositoryError extends Error {}
 
-export function storageMode(): "local" | "cloud" {
-  const mode = process.env.APP_STORAGE_MODE;
-  if (mode !== "local" && mode !== "cloud")
-    throw new Error('Set APP_STORAGE_MODE to either "local" or "cloud".');
-
-  if (mode === "local") return "local";
-
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key)
-    throw new Error(
-      "Cloud storage requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
-    );
-  if (key.startsWith("sb_publishable_"))
-    throw new Error(
-      "Set SUPABASE_SERVICE_ROLE_KEY to a server secret key, not a publishable key.",
-    );
-  return "cloud";
-}
-
-function database() {
-  if (storageMode() !== "cloud")
-    throw new TaskRepositoryError("Cloud storage is not configured.");
-  return createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: { persistSession: false, autoRefreshToken: false },
-    },
-  );
-}
-
 export async function listTasks() {
-  const client = database();
+  const { client, user } = await requireTaskSession();
   const tasks: Task[] = [];
   const pageSize = 500;
   // Supabase caps individual responses; page through so older tasks remain visible.
@@ -52,6 +21,7 @@ export async function listTasks() {
     const { data, error } = await client
       .from("tasks")
       .select("*")
+      .eq("user_id", user.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
@@ -64,9 +34,10 @@ export async function listTasks() {
 }
 
 export async function createTask(input: CreateTask) {
-  const { data, error } = await database()
+  const { client, user } = await requireTaskSession();
+  const { data, error } = await client
     .from("tasks")
-    .insert(createTaskSchema.parse(input))
+    .insert({ ...createTaskSchema.parse(input), user_id: user.id })
     .select()
     .single();
   if (error) throw new TaskRepositoryError("Unable to create the task.");
@@ -74,10 +45,12 @@ export async function createTask(input: CreateTask) {
 }
 
 export async function updateTask(id: string, input: TaskPatch) {
-  const { data, error } = await database()
+  const { client, user } = await requireTaskSession();
+  const { data, error } = await client
     .from("tasks")
     .update(updateTaskSchema.parse(input))
     .eq("id", id)
+    .eq("user_id", user.id)
     .select()
     .maybeSingle();
   if (error) throw new TaskRepositoryError("Unable to update the task.");
