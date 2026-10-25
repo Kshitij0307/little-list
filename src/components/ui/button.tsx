@@ -1,16 +1,21 @@
+import buttonStyles from "./button.module.css";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-const buttonVariants = cva("button", {
+const buttonVariants = cva(buttonStyles["button"], {
   variants: {
     variant: {
-      default: "button-primary",
-      secondary: "button-secondary",
-      ghost: "button-ghost",
-      danger: "button-danger",
+      default: buttonStyles["button-primary"],
+      secondary: buttonStyles["button-secondary"],
+      ghost: buttonStyles["button-ghost"],
+      danger: buttonStyles["button-danger"],
     },
-    size: { default: "", sm: "button-sm", icon: "button-icon" },
+    size: {
+      default: "",
+      sm: buttonStyles["button-sm"],
+      icon: buttonStyles["button-icon"],
+    },
   },
   defaultVariants: { variant: "default", size: "default" },
 });
@@ -27,6 +32,7 @@ export function Button({
   return (
     <Comp
       className={cn(buttonVariants({ variant, size }), className)}
+      data-size={size ?? "default"}
       {...props}
     />
   );

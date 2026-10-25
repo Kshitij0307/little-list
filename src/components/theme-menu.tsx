@@ -1,4 +1,6 @@
 "use client";
+import themeStyles from "./theme-menu.module.css";
+import menuStyles from "./ui/dropdown-menu.module.css";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Check, Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -10,17 +12,17 @@ export function ThemeMenu() {
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         <Button variant="ghost" size="icon" aria-label="Choose color theme">
-          <Sun size={18} className="theme-sun" />
-          <Moon size={18} className="theme-moon" />
+          <Sun size={18} className={themeStyles["theme-sun"]} />
+          <Moon size={18} className={themeStyles["theme-moon"]} />
         </Button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          className="dropdown-content"
+          className={menuStyles["dropdown-content"]}
           align="end"
           sideOffset={8}
         >
-          <DropdownMenu.Label className="dropdown-label">
+          <DropdownMenu.Label className={menuStyles["dropdown-label"]}>
             Appearance
           </DropdownMenu.Label>
           {[
@@ -30,12 +32,14 @@ export function ThemeMenu() {
           ].map(({ value, label, Icon }) => (
             <DropdownMenu.Item
               key={value}
-              className="dropdown-item"
+              className={menuStyles["dropdown-item"]}
               onSelect={() => setTheme(value)}
             >
               <Icon size={16} />
               {label}
-              {theme === value && <Check size={15} className="ml-auto" />}
+              {theme === value && (
+                <Check size={15} className={themeStyles["theme-check"]} />
+              )}
             </DropdownMenu.Item>
           ))}
         </DropdownMenu.Content>

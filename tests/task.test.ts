@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applyTaskPatch,
+  childTasks,
   createTaskSchema,
   makeTask,
   mainTasks,
@@ -130,6 +131,30 @@ describe("task hierarchy visibility", () => {
         tasks.map((task) => ({ ...task, status: "done", focus_today: true })),
       ),
     ).toHaveLength(1);
+  });
+  it("separates direct subtasks by status for a task route", () => {
+    const inProgress = {
+      ...child,
+      id: "37cff14d-96d4-42e3-a5d6-e55bc80d625c",
+      status: "in_progress" as const,
+    };
+    const done = {
+      ...grandchild,
+      parent_id: parent.id,
+      status: "done" as const,
+      completed_at: later,
+    };
+
+    expect(
+      childTasks([parent, child, inProgress, done], parent.id, "todo"),
+    ).toEqual([child]);
+    expect(
+      childTasks([parent, child, inProgress, done], parent.id, "in_progress"),
+    ).toEqual([inProgress]);
+    expect(
+      childTasks([parent, child, inProgress, done], parent.id, "done"),
+    ).toEqual([done]);
+    expect(childTasks([parent, child, grandchild], parent.id)).toEqual([child]);
   });
   it("excludes the current task and its ancestors from existing-task choices", () => {
     expect(subtaskCandidates([parent, child, grandchild], parent.id)).toEqual(

@@ -1,4 +1,6 @@
 "use client";
+import rowStyles from "./task-row.module.css";
+import menuStyles from "@/components/ui/dropdown-menu.module.css";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
@@ -12,6 +14,7 @@ import {
   Star,
   Sun,
   Trash2,
+  Unlink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -28,11 +31,13 @@ export function TaskRow({
   busy,
   onEdit,
   onUpdate,
+  onDetach,
 }: {
   task: Task;
   busy: boolean;
   onEdit(): void;
   onUpdate(patch: TaskPatch, label?: string): void;
+  onDetach?(): void;
 }) {
   const done = task.status === "done";
   const overdue = !!task.due_date && task.due_date < localDate() && !done;
@@ -45,9 +50,12 @@ export function TaskRow({
         }).format(new Date(`${task.due_date}T12:00:00`))
     : null;
   return (
-    <li className={cn("task-row", done && "task-done")}>
+    <li
+      data-task-row
+      className={cn(rowStyles["task-row"], done && rowStyles["task-done"])}
+    >
       <button
-        className="task-check"
+        className={rowStyles["task-check"]}
         aria-label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
         disabled={busy}
         onClick={() =>
@@ -64,17 +72,24 @@ export function TaskRow({
         )}
       </button>
       <button
-        className="task-copy"
+        className={rowStyles["task-copy"]}
         onClick={onEdit}
         disabled={busy}
         aria-label={`Edit ${task.title}`}
       >
-        <span className="task-title">{task.title}</span>
-        {task.notes && <span className="task-note">{task.notes}</span>}
+        <span className={rowStyles["task-title"]}>{task.title}</span>
+        {task.notes && (
+          <span className={rowStyles["task-note"]}>{task.notes}</span>
+        )}
         {(dateLabel || task.focus_today) && (
-          <span className="task-meta">
+          <span className={rowStyles["task-meta"]}>
             {dateLabel && (
-              <span className={cn("date-badge", overdue && "overdue")}>
+              <span
+                className={cn(
+                  rowStyles["date-badge"],
+                  overdue && rowStyles["overdue"],
+                )}
+              >
                 <CalendarDays size={12} />
                 {overdue ? "Overdue · " : ""}
                 {dateLabel}
@@ -88,11 +103,14 @@ export function TaskRow({
           </span>
         )}
       </button>
-      <div className="task-actions">
+      <div data-task-actions className={rowStyles["task-actions"]}>
         <Button
           variant="ghost"
           size="icon"
-          className={cn("star-button", task.starred && "is-starred")}
+          className={cn(
+            rowStyles["star-button"],
+            task.starred && rowStyles["is-starred"],
+          )}
           aria-label={
             task.starred ? `Unstar ${task.title}` : `Star ${task.title}`
           }
@@ -111,7 +129,8 @@ export function TaskRow({
           <Button
             variant="secondary"
             size="sm"
-            className="advance-button"
+            data-advance
+            className={rowStyles["advance-button"]}
             disabled={busy}
             onClick={() =>
               onUpdate(
@@ -128,6 +147,18 @@ export function TaskRow({
             )}
           </Button>
         )}
+        {onDetach && (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Move ${task.title} to main list`}
+            title="Move to main list"
+            disabled={busy}
+            onClick={onDetach}
+          >
+            <Unlink size={16} />
+          </Button>
+        )}
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
             <Button
@@ -141,16 +172,19 @@ export function TaskRow({
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
             <DropdownMenu.Content
-              className="dropdown-content"
+              className={menuStyles["dropdown-content"]}
               align="end"
               sideOffset={6}
             >
-              <DropdownMenu.Item className="dropdown-item" onSelect={onEdit}>
+              <DropdownMenu.Item
+                className={menuStyles["dropdown-item"]}
+                onSelect={onEdit}
+              >
                 <Pencil size={15} />
                 Edit details
               </DropdownMenu.Item>
               <DropdownMenu.Item
-                className="dropdown-item"
+                className={menuStyles["dropdown-item"]}
                 onSelect={() =>
                   onUpdate({ focus_today: !task.focus_today }, "Focus updated")
                 }
@@ -158,15 +192,17 @@ export function TaskRow({
                 <Sun size={15} />
                 {task.focus_today ? "Remove from today" : "Focus on this today"}
               </DropdownMenu.Item>
-              <DropdownMenu.Separator className="dropdown-separator" />
-              <DropdownMenu.Label className="dropdown-label">
+              <DropdownMenu.Separator
+                className={menuStyles["dropdown-separator"]}
+              />
+              <DropdownMenu.Label className={menuStyles["dropdown-label"]}>
                 Move to
               </DropdownMenu.Label>
               {STATUSES.filter((status) => status !== task.status).map(
                 (status) => (
                   <DropdownMenu.Item
                     key={status}
-                    className="dropdown-item"
+                    className={menuStyles["dropdown-item"]}
                     onSelect={() =>
                       onUpdate({ status }, `Moved to ${STATUS_LABELS[status]}`)
                     }
@@ -182,9 +218,14 @@ export function TaskRow({
                   </DropdownMenu.Item>
                 ),
               )}
-              <DropdownMenu.Separator className="dropdown-separator" />
+              <DropdownMenu.Separator
+                className={menuStyles["dropdown-separator"]}
+              />
               <DropdownMenu.Item
-                className="dropdown-item destructive"
+                className={[
+                  menuStyles["dropdown-item"],
+                  menuStyles["destructive"],
+                ].join(" ")}
                 onSelect={() =>
                   onUpdate(
                     { deleted_at: new Date().toISOString() },

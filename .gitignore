@@ -7,3 +7,6 @@ coverage/
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
+
+# Local screenshots and component documentation.
+/.component-guide/

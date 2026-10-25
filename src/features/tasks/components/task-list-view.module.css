@@ -1,0 +1,164 @@
+.quick-add {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin: 25px 26px;
+  padding: 7px 7px 7px 15px;
+  background: var(--background);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.quick-add:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.add-icon {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.quick-add input {
+  min-width: 0;
+  flex: 1;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  padding: 8px 0;
+}
+.quick-add input:focus-visible {
+  outline: none;
+}
+.enter-hint {
+  padding: 2px 5px;
+  margin-right: 2px;
+}
+.list-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 26px 19px;
+  border-bottom: 1px solid var(--line);
+  gap: 10px;
+}
+.focus-filter.selected {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.list-subheader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 27px;
+}
+.list-subheader p {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+}
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--subtle);
+}
+.search-box input {
+  width: 112px;
+  border: 0;
+  color: var(--ink);
+  font-size: 12px;
+  background: transparent;
+  padding: 4px 0;
+}
+.search-box button {
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+}
+.task-panel {
+  min-height: 240px;
+}
+.task-list {
+  margin: 0;
+  padding: 0 26px 17px;
+  list-style: none;
+}
+@media (max-width: 700px) {
+  .quick-add {
+    margin: 18px;
+    gap: 9px;
+    padding-left: 10px;
+  }
+  .enter-hint {
+    display: none;
+  }
+  .list-controls {
+    padding: 0 18px 16px;
+    flex-wrap: wrap;
+    gap: 13px;
+  }
+  .list-subheader {
+    padding: 17px 18px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .task-list {
+    padding: 0 18px 15px;
+  }
+}
+@media (max-width: 480px) {
+  .quick-add {
+    margin: 15px;
+    padding: 5px;
+    gap: 7px;
+  }
+  .add-icon {
+    display: none;
+  }
+  .quick-add input {
+    font-size: 16px;
+    padding-left: 9px;
+  }
+  .quick-add button[type="submit"] {
+    font-size: 12px;
+    padding: 0 11px;
+    min-height: 44px;
+  }
+  .quick-add button[type="submit"] svg {
+    display: none;
+  }
+  .list-controls {
+    padding: 0 15px 13px;
+  }
+  .focus-filter {
+    min-height: 40px;
+  }
+  .list-subheader {
+    padding: 16px 15px 12px;
+    gap: 13px;
+  }
+  .list-subheader p {
+    width: 100%;
+    font-size: 11px;
+  }
+  .search-box {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0 9px;
+  }
+  .search-box input {
+    flex: 1;
+    font-size: 16px;
+    min-height: 42px;
+  }
+  .search-box kbd {
+    display: none;
+  }
+  .task-list {
+    padding: 0 15px 12px;
+  }
+}

@@ -1,0 +1,154 @@
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+  animation: appear 0.2s ease-out;
+}
+.task-row:last-child {
+  border-bottom: 0;
+}
+.task-check {
+  flex-shrink: 0;
+  width: 30px;
+  height: 34px;
+  background: transparent;
+  color: var(--subtle);
+  border: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+.task-check:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.task-done .task-check {
+  color: var(--accent);
+  background: var(--accent-soft);
+  width: 28px;
+  height: 28px;
+  margin-right: 2px;
+}
+.task-copy {
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 3px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-radius: 3px;
+}
+.task-title {
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.task-done .task-title {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--subtle);
+}
+.task-note {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  width: 100%;
+  line-height: 1.5;
+}
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--accent);
+  font-size: 10px;
+}
+.task-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.6;
+}
+.date-badge {
+  color: var(--muted);
+}
+.date-badge.overdue {
+  color: var(--danger);
+}
+.task-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.star-button {
+  color: var(--subtle);
+}
+.star-button.is-starred {
+  color: var(--gold);
+}
+.advance-button {
+  min-width: 75px;
+}
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 700px) {
+  .task-row {
+    gap: 9px;
+  }
+  .task-actions {
+    gap: 1px;
+  }
+}
+@media (max-width: 480px) {
+  .task-row {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    column-gap: 9px;
+    row-gap: 7px;
+    padding: 15px 0;
+    align-items: start;
+  }
+  .task-check {
+    min-height: 44px;
+    width: 30px;
+  }
+  .task-done .task-check {
+    margin-top: 7px;
+    min-height: 28px;
+  }
+  .task-copy {
+    padding-top: 8px;
+  }
+  .task-title {
+    font-size: 14px;
+  }
+  .task-actions {
+    grid-column: 2;
+    justify-content: flex-end;
+    margin-top: 1px;
+    gap: 5px;
+  }
+  .task-actions button {
+    min-height: 44px;
+  }
+  .task-actions button[data-size="icon"] {
+    min-width: 44px;
+  }
+  .task-note {
+    font-size: 12px;
+  }
+}

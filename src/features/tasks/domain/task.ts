@@ -127,6 +127,20 @@ export function mainTasks(tasks: Task[]): Task[] {
   return tasks.filter((task) => !task.parent_id && !task.deleted_at);
 }
 
+export function childTasks(
+  tasks: Task[],
+  parentId: string,
+  status?: TaskStatus,
+): Task[] {
+  const children = tasks.filter(
+    (task) =>
+      task.parent_id === parentId &&
+      !task.deleted_at &&
+      (!status || task.status === status),
+  );
+  return status ? sortTasks(children, status) : children;
+}
+
 export function subtaskCandidates(tasks: Task[], parentId: string): Task[] {
   return mainTasks(tasks).filter((task) => {
     try {

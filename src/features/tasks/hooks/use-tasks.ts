@@ -12,6 +12,8 @@ import {
 } from "../domain/task";
 
 type UndoAction = { id: string; patch: TaskPatch; label: string };
+const errorMessage = (value: unknown) =>
+  value instanceof Error ? value.message : "Could not save. Please try again.";
 
 export function useTasks(mode: StorageMode) {
   const gateway = useMemo(() => createGateway(mode), [mode]);
@@ -22,10 +24,6 @@ export function useTasks(mode: StorageMode) {
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
   const lock = useRef(false);
   const loaded = useRef(false);
-  const errorMessage = (value: unknown) =>
-    value instanceof Error
-      ? value.message
-      : "Could not save. Please try again.";
 
   const reload = useCallback(async () => {
     if (lock.current) return;
@@ -58,35 +56,16 @@ export function useTasks(mode: StorageMode) {
     };
   }, [reload]);
 
-  const create = async (title: string, parentId: string | null = null) => {
+  // Both writes share locking, error reporting, rollback, and undo bookkeeping.
+  // Overlapping writes are rejected; this is deliberately not a mutation queue.
+  async function mutate(operation: () => Promise<UndoAction | null>) {
     if (lock.current || !loaded.current) return false;
-    let input;
-    try {
-      input = createTaskSchema.parse({
-        id: crypto.randomUUID(),
-        title,
-        parent_id: parentId,
-      });
-      validateTaskParent(tasks, input.id, input.parent_id);
-    } catch (failure) {
-      setError(errorMessage(failure));
-      return false;
-    }
     lock.current = true;
     setBusy(true);
     setError(null);
     const previous = tasks;
-    setTasks((items) => [...items, makeTask(input)]);
     try {
-      const saved = await gateway.create(input);
-      setTasks((items) =>
-        items.map((task) => (task.id === saved.id ? saved : task)),
-      );
-      setUndoAction({
-        id: saved.id,
-        patch: { deleted_at: new Date().toISOString() },
-        label: "Task added",
-      });
+      setUndoAction(await operation());
       return true;
     } catch (failure) {
       setTasks(previous);
@@ -96,23 +75,39 @@ export function useTasks(mode: StorageMode) {
       lock.current = false;
       setBusy(false);
     }
-  };
+  }
 
-  const update = async (
+  const create = (title: string, parentId: string | null = null) =>
+    mutate(async () => {
+      const input = createTaskSchema.parse({
+        id: crypto.randomUUID(),
+        title,
+        parent_id: parentId,
+      });
+      validateTaskParent(tasks, input.id, input.parent_id);
+      setTasks((items) => [...items, makeTask(input)]);
+      const saved = await gateway.create(input);
+      setTasks((items) =>
+        items.map((task) => (task.id === saved.id ? saved : task)),
+      );
+      return {
+        id: saved.id,
+        patch: { deleted_at: new Date().toISOString() },
+        label: "Task added",
+      };
+    });
+
+  const update = (
     id: string,
     patch: TaskPatch,
     label = "Task updated",
     undoing = false,
-  ) => {
-    if (lock.current || !loaded.current) return false;
-    const current = tasks.find((task) => task.id === id);
-    // Deleted tasks are absent from the visible list but can still be restored by undo.
-    if (!current && !undoing) return false;
-    lock.current = true;
-    setBusy(true);
-    setError(null);
-    const previous = tasks;
-    try {
+  ) =>
+    mutate(async () => {
+      const current = tasks.find((task) => task.id === id);
+      // Undo can restore a deleted task that is no longer in the visible collection.
+      if (!current && !undoing)
+        throw new Error("Task not found. Refresh your list.");
       if (current) {
         const optimistic = applyTaskPatch(current, patch);
         if (patch.parent_id !== undefined)
@@ -124,27 +119,18 @@ export function useTasks(mode: StorageMode) {
         );
       }
       const saved = await gateway.update(id, patch);
-      setTasks((items) => [
-        ...items.filter((task) => task.id !== id),
-        ...(saved.deleted_at ? [] : [saved]),
-      ]);
-      if (undoing) setUndoAction(null);
-      else if (current) {
-        const reverse: TaskPatch = {};
-        for (const key of Object.keys(patch) as (keyof TaskPatch)[])
-          Object.assign(reverse, { [key]: current[key] });
-        setUndoAction({ id, patch: reverse, label });
-      }
-      return true;
-    } catch (failure) {
-      setTasks(previous);
-      setError(errorMessage(failure));
-      return false;
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
-  };
+      setTasks((items) => {
+        if (saved.deleted_at) return items.filter((task) => task.id !== id);
+        return items.some((task) => task.id === id)
+          ? items.map((task) => (task.id === id ? saved : task))
+          : [...items, saved];
+      });
+      if (undoing || !current) return null;
+      const reverse: TaskPatch = {};
+      for (const key of Object.keys(patch) as (keyof TaskPatch)[])
+        Object.assign(reverse, { [key]: current[key] });
+      return { id, patch: reverse, label };
+    });
 
   return {
     tasks,

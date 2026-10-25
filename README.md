@@ -7,7 +7,9 @@ Little List is a calm, responsive task manager for capturing everyday work witho
 - Organize tasks across **Todo**, **In progress**, and **Done**.
 - Move tasks between statuses while preserving their details.
 - Add notes, due dates, stars, and a **Focus today** flag.
+- Open every task at its own shareable `/tasks/[id]` route.
 - Break work into nested subtasks or move an existing task beneath another task.
+- Track each task's subtasks in their own Todo, In progress, and Done tabs.
 - Search task titles and notes within the active status.
 - Sort active tasks by importance and completed tasks by completion time.
 - Undo recent additions, edits, moves, and deletions.
@@ -23,7 +25,7 @@ Little List is a calm, responsive task manager for capturing everyday work witho
 - [Supabase](https://supabase.com/) Postgres for optional cloud persistence
 - [Zod](https://zod.dev/) for runtime validation
 - [Radix UI](https://www.radix-ui.com/) primitives and Lucide icons
-- Tailwind CSS utilities with project-specific global styles
+- CSS Modules for component styles, shared theme tokens, and Tailwind CSS base styles
 - Vitest for automated tests
 
 ## Getting started
@@ -86,9 +88,9 @@ src/
   components/                  Shared interface and theme components
   features/tasks/
     client/                    Browser and cloud storage gateways
-    components/                Task workspace, rows, and editor
+    components/                Workspace, list, form, subtasks, and scoped CSS modules
     domain/                    Task types, validation, sorting, and rules
-    hooks/                     Task state, optimistic updates, and undo
+    hooks/                     Shared task provider, mutations, undo, and local form drafts
     server/                    Database repository and HTTP helpers
   lib/                         Shared utilities
 supabase/migrations/           Versioned database changes
@@ -112,8 +114,8 @@ With `APP_STORAGE_MODE=local`, each visitor receives a separate browser-local li
 ## Data behavior
 
 - Changes appear immediately and roll back if persistence fails.
-- Mutations run in sequence to avoid conflicting updates in the same browser session.
+- One mutation runs at a time; overlapping writes are rejected while a save is in progress.
 - The app refreshes cloud data when the page opens or regains focus.
-- Concurrent edits use last-write-wins behavior.
-- Deletion is soft, and one-step undo is available during the current page session.
+- Forms preserve unsaved edits during refresh, update untouched fields from the latest task, and save only edited fields. Concurrent changes to the same field use last-write-wins behavior.
+- Deletion is soft, and one-step undo survives navigation within the notebook.
 - Completing a parent task does not automatically complete its subtasks.
