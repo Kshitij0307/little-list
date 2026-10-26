@@ -39,6 +39,85 @@ function Tabs() {
 }
 
 describe("shared task controls", () => {
+  it.each(["todo", "in_progress", "done"] as const)(
+    "selects through the %s task body without opening details",
+    (status) => {
+      const onEdit = vi.fn();
+      const onUpdate = vi.fn();
+      const toggle = vi.fn();
+      const row = (selected: boolean, busy = false, disabled = false) => (
+        <ul>
+          <TaskRow
+            task={{ ...task, status, notes: "Read the introduction first" }}
+            busy={busy}
+            onEdit={onEdit}
+            onUpdate={onUpdate}
+            selection={{ selected, disabled, toggle }}
+          />
+        </ul>
+      );
+      const view = render(row(false));
+      const body = screen.getByRole("button", { name: `Select ${task.title}` });
+      expect(body.getAttribute("aria-pressed")).toBe("false");
+      fireEvent.click(screen.getByText("Read the introduction first"));
+      expect(toggle).toHaveBeenCalledOnce();
+      view.rerender(row(true));
+      expect(body.getAttribute("aria-pressed")).toBe("true");
+      fireEvent.click(screen.getByText(task.title));
+      expect(toggle).toHaveBeenCalledTimes(2);
+      for (const [busy, disabled] of [
+        [true, false],
+        [false, true],
+      ]) {
+        view.rerender(row(false, busy, disabled));
+        expect((body as HTMLButtonElement).disabled).toBe(true);
+        fireEvent.click(body);
+      }
+      expect(toggle).toHaveBeenCalledTimes(2);
+      expect(onEdit).not.toHaveBeenCalled();
+      expect(onUpdate).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["todo", "done"] as const)(
+    "uses the %s circle only for selection when selection mode is enabled",
+    (status) => {
+      const toggle = vi.fn();
+      const update = vi.fn();
+      const view = render(
+        <ul>
+          <TaskRow
+            task={{ ...task, status }}
+            busy={false}
+            onEdit={vi.fn()}
+            onUpdate={update}
+            selection={{ selected: false, toggle }}
+          />
+        </ul>,
+      );
+      const circle = screen.getByRole("checkbox", {
+        name: `Select ${task.title}`,
+      });
+      expect(circle.getAttribute("aria-checked")).toBe("false");
+      fireEvent.click(circle);
+      expect(toggle).toHaveBeenCalledOnce();
+      expect(update).not.toHaveBeenCalled();
+      view.rerender(
+        <ul>
+          <TaskRow
+            task={{ ...task, status }}
+            busy
+            onEdit={vi.fn()}
+            onUpdate={update}
+            selection={{ selected: true, toggle }}
+          />
+        </ul>,
+      );
+      expect(circle.getAttribute("aria-checked")).toBe("true");
+      fireEvent.click(circle);
+      expect(toggle).toHaveBeenCalledOnce();
+    },
+  );
   it("keeps opening a task separate from its completion and star actions", () => {
     const onEdit = vi.fn();
     const onUpdate = vi.fn();

@@ -1,7 +1,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { TaskRepositoryError } from "./repository";
+import { TaskConflictError, TaskRepositoryError } from "./repository";
 import {
   AuthenticationRequiredError,
   AuthenticationUnavailableError,
@@ -42,6 +42,11 @@ export async function readJson(request: Request): Promise<unknown> {
 }
 
 export function errorResponse(error: unknown) {
+  if (error instanceof TaskConflictError)
+    return NextResponse.json(
+      { error: error.message },
+      { status: 409, headers: { "Cache-Control": "no-store" } },
+    );
   if (error instanceof AuthenticationUnavailableError)
     return NextResponse.json(
       { error: error.message },

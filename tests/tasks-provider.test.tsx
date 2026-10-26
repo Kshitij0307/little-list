@@ -27,6 +27,8 @@ const gateway = vi.hoisted(() => ({
   list: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
+  move: vi.fn(),
+  remove: vi.fn(),
 }));
 vi.mock("../src/features/tasks/client/task-gateway", () => ({
   createGateway: () => gateway,

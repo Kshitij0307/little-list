@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, POST } from "../src/app/api/tasks/route";
 import { PATCH } from "../src/app/api/tasks/[id]/route";
+import { PATCH as batchPatch } from "../src/app/api/tasks/batch/route";
 import {
   createTask,
   listTasks,
   TaskRepositoryError,
   updateTask,
+  moveTasks,
+  TaskConflictError,
+  deleteTasks,
 } from "../src/features/tasks/server/repository";
 import { createTaskSchema, makeTask } from "../src/features/tasks/domain/task";
 
@@ -13,6 +17,9 @@ vi.mock("../src/features/tasks/server/repository", () => ({
   createTask: vi.fn(),
   listTasks: vi.fn(),
   updateTask: vi.fn(),
+  moveTasks: vi.fn(),
+  deleteTasks: vi.fn(),
+  TaskConflictError: class extends Error {},
   TaskRepositoryError: class extends Error {},
 }));
 
@@ -35,6 +42,70 @@ function request(body: unknown, method = "POST") {
 beforeEach(() => vi.resetAllMocks());
 
 describe("task API", () => {
+  it("accepts maximum-sized move and deletion requests within the JSON limit", async () => {
+    const scope = {
+      ids: Array.from({ length: 500 }, () => crypto.randomUUID()),
+      from_status: "todo",
+      parent_id: task.id,
+    };
+    const move = { ...scope, to_status: "done" };
+    const deletion = {
+      ...scope,
+      deleted_at: "2026-10-27T10:00:00.000Z",
+      restore: false,
+    };
+    vi.mocked(moveTasks).mockResolvedValue([]);
+    vi.mocked(deleteTasks).mockResolvedValue([]);
+    expect((await batchPatch(request(move, "PATCH"))).status).toBe(200);
+    expect((await batchPatch(request(deletion, "PATCH"))).status).toBe(200);
+    expect(moveTasks).toHaveBeenCalledWith(move);
+    expect(deleteTasks).toHaveBeenCalledWith(deletion);
+  });
+  it("routes soft deletion and restore through the validated batch API", async () => {
+    const deletion = {
+      ids: [task.id],
+      from_status: "todo",
+      parent_id: null,
+      deleted_at: "2026-10-27T10:00:00.000Z",
+      restore: false,
+    };
+    vi.mocked(deleteTasks).mockResolvedValue([
+      { ...task, deleted_at: deletion.deleted_at },
+    ]);
+    expect((await batchPatch(request(deletion, "PATCH"))).status).toBe(200);
+    expect(deleteTasks).toHaveBeenCalledWith(deletion);
+    expect(moveTasks).not.toHaveBeenCalled();
+    expect(
+      (await batchPatch(request({ ...deletion, restore: "true" }, "PATCH")))
+        .status,
+    ).toBe(400);
+    expect(deleteTasks).toHaveBeenCalledOnce();
+  });
+  it("validates batches, blocks cross-site writes and reports stale selections", async () => {
+    const move = {
+      ids: [task.id],
+      from_status: "todo",
+      to_status: "done",
+      parent_id: null,
+    };
+    expect(
+      (await batchPatch(request({ ...move, ids: [] }, "PATCH"))).status,
+    ).toBe(400);
+    expect(moveTasks).not.toHaveBeenCalled();
+    const crossSite = request(move, "PATCH");
+    crossSite.headers.set("origin", "https://other.example");
+    expect((await batchPatch(crossSite)).status).toBe(403);
+    expect(moveTasks).not.toHaveBeenCalled();
+    vi.mocked(moveTasks).mockResolvedValue([{ ...task, status: "done" }]);
+    const response = await batchPatch(request(move, "PATCH"));
+    expect(response.status).toBe(200);
+    expect(moveTasks).toHaveBeenCalledWith(move);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    vi.mocked(moveTasks).mockRejectedValue(
+      new TaskConflictError("Selected tasks changed"),
+    );
+    expect((await batchPatch(request(move, "PATCH"))).status).toBe(409);
+  });
   it("validates task links before writing and accepts link removal", async () => {
     const context = { params: Promise.resolve({ id: task.id }) };
     expect(

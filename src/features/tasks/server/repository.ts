@@ -9,8 +9,54 @@ import {
   type Task,
   type TaskPatch,
 } from "../domain/task";
+import {
+  parseMovedTasks,
+  taskMoveSchema,
+  type TaskMove,
+  parseDeletedTasks,
+  taskDeletionSchema,
+  type TaskDeletion,
+} from "../domain/task-batch";
 
 export class TaskRepositoryError extends Error {}
+export class TaskConflictError extends Error {}
+
+export async function deleteTasks(input: TaskDeletion) {
+  const deletion = taskDeletionSchema.parse(input);
+  const { client } = await requireTaskSession();
+  const { data, error } = await client.rpc("delete_tasks", {
+    task_ids: deletion.ids,
+    from_status: deletion.from_status,
+    task_parent_id: deletion.parent_id,
+    deletion_time: deletion.deleted_at,
+    restoring: deletion.restore,
+  });
+  if (error?.code === "23514")
+    throw new TaskConflictError(
+      "Selected tasks changed. Refresh your list and select them again.",
+    );
+  if (error)
+    throw new TaskRepositoryError("Unable to update the selected tasks.");
+  return parseDeletedTasks(data, deletion);
+}
+
+export async function moveTasks(input: TaskMove) {
+  const move = taskMoveSchema.parse(input);
+  const { client } = await requireTaskSession();
+  const { data, error } = await client.rpc("move_tasks", {
+    task_ids: move.ids,
+    from_status: move.from_status,
+    to_status: move.to_status,
+    task_parent_id: move.parent_id,
+  });
+  if (error?.code === "23514")
+    throw new TaskConflictError(
+      "Selected tasks changed. Refresh your list and select them again.",
+    );
+  if (error)
+    throw new TaskRepositoryError("Unable to move the selected tasks.");
+  return parseMovedTasks(data, move);
+}
 
 export async function listTasks(
   session?: Awaited<ReturnType<typeof requireTaskSession>>,

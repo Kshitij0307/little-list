@@ -5,6 +5,9 @@ import {
   listTasks,
   storageMode,
   updateTask,
+  moveTasks,
+  TaskConflictError,
+  deleteTasks,
 } from "../src/features/tasks/server/repository";
 import { AuthenticationRequiredError } from "../src/features/auth/server/session";
 
@@ -16,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   single: vi.fn(),
   maybeSingle: vi.fn(),
   session: vi.fn(),
+  rpc: vi.fn(),
 }));
 vi.mock("../src/features/auth/server/session", () => ({
   AuthenticationRequiredError: class extends Error {},
@@ -45,7 +49,7 @@ beforeEach(() => {
   mocks.insert.mockReturnValue(query);
   mocks.update.mockReturnValue(query);
   mocks.session.mockResolvedValue({
-    client: { from: () => query },
+    client: { from: () => query, rpc: mocks.rpc },
     user: { id: owner },
   });
   vi.stubEnv("APP_STORAGE_MODE", "cloud");
@@ -55,6 +59,58 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("private server storage", () => {
+  it("soft-deletes and restores through the authenticated batch transaction", async () => {
+    const input = {
+      ids: [task.id],
+      from_status: "todo" as const,
+      parent_id: null,
+      deleted_at: "2026-10-27T10:00:00Z",
+      restore: false,
+    };
+    mocks.rpc.mockResolvedValue({
+      data: [{ ...task, deleted_at: input.deleted_at }],
+      error: null,
+    });
+    expect((await deleteTasks(input))[0].deleted_at).toBe(input.deleted_at);
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("delete_tasks", {
+      task_ids: input.ids,
+      from_status: "todo",
+      task_parent_id: null,
+      deletion_time: input.deleted_at,
+      restoring: false,
+    });
+    mocks.rpc.mockResolvedValue({ data: [task], error: null });
+    expect(
+      (await deleteTasks({ ...input, restore: true }))[0].deleted_at,
+    ).toBeNull();
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "23514" } });
+    await expect(deleteTasks(input)).rejects.toBeInstanceOf(TaskConflictError);
+  });
+  it("uses one authenticated transactional RPC and reports conflicts without partial success", async () => {
+    const move = {
+      ids: [task.id],
+      from_status: "todo" as const,
+      to_status: "done" as const,
+      parent_id: null,
+    };
+    const saved = { ...task, status: "done" as const };
+    mocks.rpc.mockResolvedValue({ data: [saved], error: null });
+    expect(await moveTasks(move)).toEqual([saved]);
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("move_tasks", {
+      task_ids: [task.id],
+      from_status: "todo",
+      to_status: "done",
+      task_parent_id: null,
+    });
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "23514" } });
+    await expect(moveTasks(move)).rejects.toBeInstanceOf(TaskConflictError);
+    mocks.session.mockRejectedValue(new AuthenticationRequiredError());
+    mocks.rpc.mockClear();
+    await expect(moveTasks(move)).rejects.toBeInstanceOf(
+      AuthenticationRequiredError,
+    );
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
   it("rejects secret keys and missing cloud credentials", () => {
     vi.stubEnv("SUPABASE_PUBLISHABLE_KEY", "sb_secret_test_placeholder");
     expect(storageMode).toThrow("publishable key");

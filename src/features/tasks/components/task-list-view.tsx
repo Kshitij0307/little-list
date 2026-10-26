@@ -16,7 +16,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { mainTasks, sortTasks, type TaskStatus } from "../domain/task";
 import { useTaskContext } from "../hooks/tasks-provider";
-import { TaskRow } from "./task-row";
+import {
+  SelectableTaskList,
+  TaskSelectionToggle,
+} from "./selectable-task-list";
+import { useTaskSelection } from "../hooks/use-task-selection";
 import { TaskStatusTabs } from "./task-status-tabs";
 import { TaskErrorBanner } from "./task-error-banner";
 import { TaskListSkeleton } from "./task-list-skeleton";
@@ -28,16 +32,8 @@ const TAB_NOTES: Record<TaskStatus, string> = {
 
 export function TaskListView() {
   const router = useRouter();
-  const {
-    tasks,
-    loading,
-    busy,
-    error,
-    create,
-    update,
-    listFilters,
-    setListFilters,
-  } = useTaskContext();
+  const { tasks, loading, busy, error, create, listFilters, setListFilters } =
+    useTaskContext();
   const { status, query, focusToday } = listFilters;
   const changeFilters = (patch: Partial<typeof listFilters>) =>
     setListFilters((filters) => ({ ...filters, ...patch }));
@@ -81,6 +77,8 @@ export function TaskListView() {
     ),
     status,
   );
+  const scope = JSON.stringify([status, query, focusToday]);
+  const selection = useTaskSelection(visible, scope);
 
   return (
     <>
@@ -120,19 +118,26 @@ export function TaskListView() {
           label="Task status"
           loading={loading}
         />
-        <Button
-          variant="ghost"
-          size="sm"
-          className={cn(
-            listStyles["focus-filter"],
-            focusToday && listStyles["selected"],
-          )}
-          aria-pressed={focusToday}
-          onClick={() => changeFilters({ focusToday: !focusToday })}
-        >
-          <Sun size={15} />
-          Focus today
-        </Button>
+        <div className={listStyles["list-actions"]}>
+          <TaskSelectionToggle
+            selection={selection}
+            idPrefix="task"
+            disabled={loading || busy || !visible.length}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              listStyles["focus-filter"],
+              focusToday && listStyles["selected"],
+            )}
+            aria-pressed={focusToday}
+            onClick={() => changeFilters({ focusToday: !focusToday })}
+          >
+            <Sun size={15} />
+            Focus today
+          </Button>
+        </div>
       </div>
       <div className={listStyles["list-subheader"]}>
         <p>{TAB_NOTES[status]}</p>
@@ -176,65 +181,63 @@ export function TaskListView() {
       >
         {loading ? (
           <TaskListSkeleton />
-        ) : visible.length ? (
-          <ul className={listStyles["task-list"]}>
-            {visible.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                busy={busy}
-                onEdit={() => router.push(`/tasks/${task.id}`)}
-                onUpdate={(patch, label) => void update(task.id, patch, label)}
-              />
-            ))}
-          </ul>
         ) : (
-          <div className={feedbackStyles["empty-state"]}>
-            <span className={feedbackStyles["empty-icon"]}>
-              {status === "done" ? (
-                <CheckCheck size={30} strokeWidth={1.3} />
-              ) : focusToday ? (
-                <Sun size={30} strokeWidth={1.3} />
-              ) : (
-                <Feather size={30} strokeWidth={1.3} />
+          <SelectableTaskList
+            key={scope}
+            selection={selection}
+            externalTrigger
+            tasks={visible}
+            status={status}
+            className={listStyles["task-list"]}
+            onOpenTask={(id) => router.push(`/tasks/${id}`)}
+          >
+            <div className={feedbackStyles["empty-state"]}>
+              <span className={feedbackStyles["empty-icon"]}>
+                {status === "done" ? (
+                  <CheckCheck size={30} strokeWidth={1.3} />
+                ) : focusToday ? (
+                  <Sun size={30} strokeWidth={1.3} />
+                ) : (
+                  <Feather size={30} strokeWidth={1.3} />
+                )}
+              </span>
+              <h2>
+                {error
+                  ? "Your list is waiting."
+                  : query
+                    ? "Nothing by that name."
+                    : focusToday
+                      ? "Choose a little focus."
+                      : status === "todo"
+                        ? "Good things start with a little list."
+                        : status === "in_progress"
+                          ? "Ready when you are."
+                          : "Your wins will live here."}
+              </h2>
+              <p>
+                {error
+                  ? "Retry to load your saved tasks."
+                  : query
+                    ? "Try another search or check the other tabs."
+                    : focusToday
+                      ? "Open a task’s menu to add it to today’s focus."
+                      : status === "todo"
+                        ? "Add your first task above. Big plans or small errands—all welcome."
+                        : status === "in_progress"
+                          ? "Hit Start on a task in Todo to give it your attention."
+                          : "Complete a task and take a moment to enjoy the progress."}
+              </p>
+              {!query && !focusToday && status !== "todo" && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => changeFilters({ status: "todo" })}
+                >
+                  Back to Todo <ArrowRight size={14} />
+                </Button>
               )}
-            </span>
-            <h2>
-              {error
-                ? "Your list is waiting."
-                : query
-                  ? "Nothing by that name."
-                  : focusToday
-                    ? "Choose a little focus."
-                    : status === "todo"
-                      ? "Good things start with a little list."
-                      : status === "in_progress"
-                        ? "Ready when you are."
-                        : "Your wins will live here."}
-            </h2>
-            <p>
-              {error
-                ? "Retry to load your saved tasks."
-                : query
-                  ? "Try another search or check the other tabs."
-                  : focusToday
-                    ? "Open a task’s menu to add it to today’s focus."
-                    : status === "todo"
-                      ? "Add your first task above. Big plans or small errands—all welcome."
-                      : status === "in_progress"
-                        ? "Hit Start on a task in Todo to give it your attention."
-                        : "Complete a task and take a moment to enjoy the progress."}
-            </p>
-            {!query && !focusToday && status !== "todo" && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => changeFilters({ status: "todo" })}
-              >
-                Back to Todo <ArrowRight size={14} />
-              </Button>
-            )}
-          </div>
+            </div>
+          </SelectableTaskList>
         )}
       </div>
     </>

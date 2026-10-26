@@ -37,6 +37,16 @@
 .task-done .check-icon {
   background: var(--accent-soft);
 }
+.selecting .check-icon {
+  background: transparent;
+}
+.task-selected .check-icon {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.task-selected {
+  background: var(--accent-soft);
+}
 .task-copy {
   min-width: 0;
   flex: 1;

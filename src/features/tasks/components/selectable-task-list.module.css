@@ -1,0 +1,72 @@
+.toolbar {
+  margin: 10px 0 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-alt);
+}
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.count {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-right: auto;
+  color: var(--accent);
+  font-size: var(--text-small);
+  font-weight: 500;
+}
+.actions {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) auto auto;
+  gap: 8px;
+}
+.destination {
+  min-width: 0;
+}
+.toolbar button,
+.toggle {
+  min-height: 44px;
+}
+.toggle[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.main .toolbar {
+  margin-inline: 26px;
+}
+.standalone {
+  padding-block: 8px 12px;
+}
+@media (max-width: 700px) {
+  .main .toolbar {
+    margin-inline: 18px;
+  }
+}
+@media (max-width: 600px) {
+  .actions {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .delete {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 480px) {
+  .main .toolbar {
+    margin-inline: 15px;
+  }
+  .toolbar {
+    padding: 10px;
+  }
+  .summary {
+    gap: 2px;
+    flex-wrap: wrap;
+  }
+  .summary button {
+    padding-inline: 8px;
+  }
+}

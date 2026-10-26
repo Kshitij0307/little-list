@@ -10,8 +10,20 @@ import {
   type Task,
   type TaskPatch,
 } from "../domain/task";
+import {
+  applyTaskMove,
+  taskMoveSchema,
+  type TaskMove,
+  applyTaskDeletion,
+  taskDeletionSchema,
+  type TaskDeletion,
+} from "../domain/task-batch";
 
-type UndoAction = { id: string; patch: TaskPatch; label: string };
+type UndoAction = { label: string } & (
+  | { id: string; patch: TaskPatch }
+  | { move: TaskMove }
+  | { deletion: TaskDeletion; tasks: Task[] }
+);
 export type InitialTaskState = { tasks: Task[] } | { error: string };
 const errorMessage = (value: unknown) =>
   value instanceof Error ? value.message : "Could not save. Please try again.";
@@ -94,7 +106,7 @@ export function useTasks(
     };
   }, [mode, reload, initialState]);
 
-  // Both writes share locking, error reporting, rollback, and undo bookkeeping.
+  // Writes share locking, error reporting, rollback, and undo bookkeeping.
   // Overlapping writes are rejected; this is deliberately not a mutation queue.
   async function mutate(operation: () => Promise<UndoAction | null>) {
     if (lock.current || !loaded.current) return false;
@@ -170,6 +182,52 @@ export function useTasks(
       return { id, patch: reverse, label };
     });
 
+  const move = (input: TaskMove, undoing = false) =>
+    mutate(async () => {
+      const parsed = taskMoveSchema.parse(input);
+      const optimistic = applyTaskMove(tasks, parsed);
+      setTasks(optimistic);
+      const saved = await gateway.move(parsed);
+      const byId = new Map(saved.map((task) => [task.id, task]));
+      setTasks((items) => items.map((task) => byId.get(task.id) ?? task));
+      return undoing
+        ? null
+        : {
+            label: `${parsed.ids.length} ${parsed.ids.length === 1 ? "task" : "tasks"} moved`,
+            move: {
+              ...parsed,
+              from_status: parsed.to_status,
+              to_status: parsed.from_status,
+            },
+          };
+    });
+
+  const remove = (input: TaskDeletion, restoringTasks: Task[] = []) =>
+    mutate(async () => {
+      const deletion = taskDeletionSchema.parse(input);
+      const base = [
+        ...tasks,
+        ...restoringTasks.filter(
+          (task) => !tasks.some((current) => current.id === task.id),
+        ),
+      ];
+      setTasks(
+        applyTaskDeletion(base, deletion).filter((task) => !task.deleted_at),
+      );
+      const saved = await gateway.remove(deletion);
+      setTasks((items) => [
+        ...items.filter((task) => !deletion.ids.includes(task.id)),
+        ...saved.filter((task) => !task.deleted_at),
+      ]);
+      return deletion.restore
+        ? null
+        : {
+            label: `${deletion.ids.length} ${deletion.ids.length === 1 ? "task" : "tasks"} deleted`,
+            deletion: { ...deletion, restore: true },
+            tasks: saved,
+          };
+    });
+
   return {
     tasks,
     loading,
@@ -179,10 +237,16 @@ export function useTasks(
     reload,
     create,
     update,
+    move,
+    remove,
     undoAction,
     undo: () =>
       undoAction
-        ? update(undoAction.id, undoAction.patch, "Undone", true)
+        ? "deletion" in undoAction
+          ? remove(undoAction.deletion, undoAction.tasks)
+          : "move" in undoAction
+            ? move(undoAction.move, true)
+            : update(undoAction.id, undoAction.patch, "Undone", true)
         : Promise.resolve(false),
     dismissUndo: () => setUndoAction(null),
   };

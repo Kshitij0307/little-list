@@ -7,12 +7,24 @@ import {
   type CreateTask,
   type TaskPatch,
 } from "../domain/task";
+import {
+  applyTaskMove,
+  parseMovedTasks,
+  taskMoveSchema,
+  type TaskMove,
+  applyTaskDeletion,
+  parseDeletedTasks,
+  taskDeletionSchema,
+  type TaskDeletion,
+} from "../domain/task-batch";
 
 export type StorageMode = "local" | "cloud";
 export interface TaskGateway {
   list(): Promise<{ userId: string | null; tasks: Task[] }>;
   create(input: CreateTask): Promise<Task>;
   update(id: string, input: TaskPatch): Promise<Task>;
+  move(input: TaskMove): Promise<Task[]>;
+  remove(input: TaskDeletion): Promise<Task[]>;
 }
 
 const STORAGE_KEY = "little-list.tasks.v1";
@@ -87,6 +99,26 @@ export function createGateway(mode: StorageMode): TaskGateway {
             body: JSON.stringify(input),
           }),
         ),
+      move: async (input) => {
+        const move = taskMoveSchema.parse(input);
+        return parseMovedTasks(
+          await request("/api/tasks/batch", {
+            method: "PATCH",
+            body: JSON.stringify(move),
+          }),
+          move,
+        );
+      },
+      remove: async (input) => {
+        const deletion = taskDeletionSchema.parse(input);
+        return parseDeletedTasks(
+          await request("/api/tasks/batch", {
+            method: "PATCH",
+            body: JSON.stringify(deletion),
+          }),
+          deletion,
+        );
+      },
     };
   return {
     list: async () => ({
@@ -109,6 +141,18 @@ export function createGateway(mode: StorageMode): TaskGateway {
         validateTaskParent(tasks, id, task.parent_id);
       writeLocal(tasks.map((item) => (item.id === id ? task : item)));
       return task;
+    },
+    move: async (input) => {
+      const move = taskMoveSchema.parse(input);
+      const tasks = applyTaskMove(readLocal(), move);
+      writeLocal(tasks);
+      return tasks.filter((task) => move.ids.includes(task.id));
+    },
+    remove: async (input) => {
+      const deletion = taskDeletionSchema.parse(input);
+      const tasks = applyTaskDeletion(readLocal(), deletion);
+      writeLocal(tasks);
+      return tasks.filter((task) => deletion.ids.includes(task.id));
     },
   };
 }

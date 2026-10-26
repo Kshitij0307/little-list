@@ -13,7 +13,8 @@ import {
   type TaskStatus,
 } from "../domain/task";
 import { useTaskContext } from "../hooks/tasks-provider";
-import { TaskRow } from "./task-row";
+import { SelectableTaskList } from "./selectable-task-list";
+import { useTaskSelection } from "../hooks/use-task-selection";
 import { TaskPicker } from "./task-picker";
 import { TaskStatusTabs } from "./task-status-tabs";
 const SUBTASK_NOTES: Record<TaskStatus, string> = {
@@ -39,6 +40,10 @@ export function SubtaskSection({
     subtaskStatus,
   );
   const candidates = subtaskCandidates(tasks, taskId);
+  const selection = useTaskSelection(
+    visibleChildren,
+    `${taskId}:${subtaskStatus}`,
+  );
   return (
     <section
       data-subtasks
@@ -108,31 +113,18 @@ export function SubtaskSection({
         aria-labelledby={`subtask-tab-${subtaskStatus}`}
         className={subtasksStyles["subtask-panel"]}
       >
-        {visibleChildren.length ? (
-          <ul
-            className={[
-              listStyles["task-list"],
-              subtasksStyles["subtask-list"],
-            ].join(" ")}
-          >
-            {visibleChildren.map((item) => (
-              <TaskRow
-                key={item.id}
-                task={item}
-                busy={busy}
-                onEdit={() => onOpenTask(item.id)}
-                onUpdate={(patch, label) => void update(item.id, patch, label)}
-                onDetach={() =>
-                  void update(
-                    item.id,
-                    { parent_id: null },
-                    "Subtask moved to main list",
-                  )
-                }
-              />
-            ))}
-          </ul>
-        ) : (
+        <SelectableTaskList
+          key={`${taskId}:${subtaskStatus}`}
+          tasks={visibleChildren}
+          status={subtaskStatus}
+          parentId={taskId}
+          className={[
+            listStyles["task-list"],
+            subtasksStyles["subtask-list"],
+          ].join(" ")}
+          onOpenTask={onOpenTask}
+          selection={selection}
+        >
           <div className={subtasksStyles["subtask-empty"]}>
             {subtaskStatus === "done" ? (
               <CheckCheck size={24} />
@@ -141,7 +133,7 @@ export function SubtaskSection({
             )}
             <p>No {STATUS_LABELS[subtaskStatus].toLowerCase()} subtasks.</p>
           </div>
-        )}
+        </SelectableTaskList>
       </div>
 
       <form
