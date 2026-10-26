@@ -6,7 +6,8 @@ Little List is a calm, responsive task manager for capturing everyday work witho
 
 - Organize tasks across **Todo**, **In progress**, and **Done**.
 - Move tasks between statuses while preserving their details.
-- Add notes, due dates, stars, and a **Focus today** flag.
+- Add notes, an optional web link, due dates, stars, and a **Focus today** flag.
+- Save a post, reel, article, or other web page with context in its task notes, then open the saved link from task details. Links work on subtasks too.
 - Open every task at its own shareable `/tasks/[id]` route.
 - Break work into nested subtasks or move an existing task beneath another task.
 - Track each task's subtasks in their own Todo, In progress, and Done tabs.
@@ -62,6 +63,8 @@ APP_URL=http://localhost:3000
 Use your deployed HTTPS origin for `APP_URL` on Vercel. The app no longer uses `SUPABASE_SERVICE_ROLE_KEY`: normal task access uses the signed-in user's session and Row Level Security. Never substitute a secret key for the publishable key.
 
 Browser-local tasks are not automatically copied to Supabase. Existing cloud tasks require an explicit administrator assignment to your account, described in the setup guide.
+
+For task links on an existing cloud database, review and apply [the task links migration](supabase/migrations/202610270001_add_task_links.sql) before using this version. It adds an optional `link_url` column and allows authenticated users to update it under the existing ownership policies. Older tasks keep their notes and have no link until one is added. Local mode needs no database migration. Links accept full HTTP or HTTPS URLs; remove a saved link by clearing the field and saving.
 
 ## Available commands
 

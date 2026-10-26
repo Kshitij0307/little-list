@@ -3,6 +3,23 @@
   flex-direction: column;
   gap: 10px;
 }
+.saved-link {
+  min-width: 0;
+}
+.saved-link a {
+  max-width: 100%;
+  min-height: 44px;
+}
+.saved-link svg {
+  flex-shrink: 0;
+}
+.link-host {
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
 .editor-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

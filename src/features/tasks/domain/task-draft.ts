@@ -3,13 +3,14 @@ import { taskFieldsSchema, type Task, type TaskPatch } from "./task";
 export type TaskDraft = Pick<
   Task,
   "title" | "notes" | "status" | "starred" | "focus_today"
-> & { due_date: string };
+> & { due_date: string; link_url: string };
 export type DraftChanges = Partial<TaskDraft>;
 
 export function taskDraft(task: Task, changes: DraftChanges = {}): TaskDraft {
   return {
     title: task.title,
     notes: task.notes,
+    link_url: task.link_url ?? "",
     due_date: task.due_date ?? "",
     status: task.status,
     starred: task.starred,
@@ -35,6 +36,7 @@ export function taskDraftPatch(task: Task, changes: DraftChanges): TaskPatch {
   const parsed = taskFieldsSchema.parse({
     ...draft,
     due_date: draft.due_date || null,
+    link_url: draft.link_url.trim() || null,
   });
   const patch: TaskPatch = {};
   for (const key of Object.keys(changes) as (keyof TaskDraft)[]) {

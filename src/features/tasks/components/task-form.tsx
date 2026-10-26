@@ -1,7 +1,7 @@
 "use client";
 import formStyles from "./task-form.module.css";
 import fieldsStyles from "@/components/ui/fields.module.css";
-import { CalendarDays, Star, Sun } from "lucide-react";
+import { CalendarDays, ExternalLink, Star, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChoiceMenu } from "@/components/ui/choice-menu";
 import {
@@ -55,12 +55,40 @@ export function TaskForm({
           " ",
         )}
         id="task-notes"
-        placeholder="A few thoughts, a link, or where to start…"
+        placeholder="Why you’re saving this, or what to do next…"
         value={values.notes}
         onChange={(event) => change("notes", event.target.value)}
         maxLength={5000}
         disabled={busy}
       />
+      <label className={fieldsStyles["field-label"]} htmlFor="task-link">
+        Link <span className={fieldsStyles["optional"]}>optional</span>
+      </label>
+      <input
+        className={fieldsStyles["field"]}
+        id="task-link"
+        type="url"
+        inputMode="url"
+        placeholder="https://…"
+        value={values.link_url}
+        onChange={(event) => change("link_url", event.target.value)}
+        maxLength={2048}
+        autoCapitalize="none"
+        spellCheck={false}
+        disabled={busy}
+      />
+      {task.link_url && (
+        <div className={formStyles["saved-link"]}>
+          <Button asChild variant="secondary" size="sm">
+            <a href={task.link_url} target="_blank" rel="noopener noreferrer">
+              <ExternalLink size={14} /> Open saved link
+              <span className={formStyles["link-host"]}>
+                {new URL(task.link_url).hostname}
+              </span>
+            </a>
+          </Button>
+        </div>
+      )}
       <div className={formStyles["editor-grid"]}>
         <div>
           <label className={fieldsStyles["field-label"]} htmlFor="task-status">

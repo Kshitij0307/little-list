@@ -35,6 +35,29 @@ function request(body: unknown, method = "POST") {
 beforeEach(() => vi.resetAllMocks());
 
 describe("task API", () => {
+  it("validates task links before writing and accepts link removal", async () => {
+    const context = { params: Promise.resolve({ id: task.id }) };
+    expect(
+      (
+        await PATCH(
+          request({ link_url: "javascript:alert(1)" }, "PATCH"),
+          context,
+        )
+      ).status,
+    ).toBe(400);
+    expect(updateTask).not.toHaveBeenCalled();
+    const link_url = "https://www.linkedin.com/posts/example";
+    vi.mocked(updateTask).mockResolvedValue({ ...task, link_url });
+    expect((await PATCH(request({ link_url }, "PATCH"), context)).status).toBe(
+      200,
+    );
+    expect(updateTask).toHaveBeenCalledWith(task.id, { link_url });
+    vi.mocked(updateTask).mockResolvedValue({ ...task, link_url: null });
+    expect(
+      (await PATCH(request({ link_url: null }, "PATCH"), context)).status,
+    ).toBe(200);
+    expect(updateTask).toHaveBeenLastCalledWith(task.id, { link_url: null });
+  });
   it("returns an uncached list", async () => {
     vi.mocked(listTasks).mockResolvedValue({
       userId: "verified-owner",

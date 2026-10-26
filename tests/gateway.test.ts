@@ -17,6 +17,14 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("storage adapters", () => {
+  it("persists task links and removal across local adapter instances", async () => {
+    const link_url = "https://www.linkedin.com/posts/example";
+    await createGateway("local").create({ ...input, link_url });
+    const gateway = createGateway("local");
+    expect((await gateway.list()).tasks[0].link_url).toBe(link_url);
+    await gateway.update(input.id, { link_url: null });
+    expect((await createGateway("local").list()).tasks[0].link_url).toBeNull();
+  });
   it("persists, hides deleted tasks, and supports restoring across adapter instances", async () => {
     const gateway = createGateway("local");
     await gateway.create(input);

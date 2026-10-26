@@ -161,3 +161,72 @@ it("sends an explicit null when clearing an existing due date", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({ due_date: null }));
 });
+
+describe("saved task links", () => {
+  const link = "https://www.instagram.com/reel/example/";
+  it("saves a link with context and exposes the saved URL in a new tab", async () => {
+    const onSave = vi.fn().mockResolvedValue(true);
+    const view = render(<TaskForm task={task} busy={false} onSave={onSave} />);
+    fireEvent.change(screen.getByLabelText(/Link/), {
+      target: { value: link },
+    });
+    fireEvent.change(screen.getByLabelText(/Notes/), {
+      target: { value: "Try this exercise later" },
+    });
+    expect(screen.queryByRole("link", { name: /Open saved link/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith({
+        link_url: link,
+        notes: "Try this exercise later",
+      }),
+    );
+    view.rerender(
+      <TaskForm
+        task={{ ...task, link_url: link, notes: "Try this exercise later" }}
+        busy={false}
+        onSave={onSave}
+      />,
+    );
+    const anchor = screen.getByRole("link", { name: /Open saved link/ });
+    expect(anchor.getAttribute("href")).toBe(link);
+    expect(anchor.getAttribute("target")).toBe("_blank");
+    expect(anchor.getAttribute("rel")).toBe("noopener noreferrer");
+  });
+  it("removes links explicitly and follows the saved value after undo", async () => {
+    const onSave = vi.fn().mockResolvedValue(true);
+    const linked = { ...task, link_url: link };
+    const view = render(
+      <TaskForm task={linked} busy={false} onSave={onSave} />,
+    );
+    fireEvent.change(screen.getByLabelText(/Link/), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith({ link_url: null }),
+    );
+    await screen.findByText("Changes saved");
+    view.rerender(<TaskForm task={task} busy={false} onSave={onSave} />);
+    expect(screen.queryByRole("link", { name: /Open saved link/ })).toBeNull();
+    view.rerender(<TaskForm task={linked} busy={false} onSave={onSave} />);
+    expect((screen.getByLabelText(/Link/) as HTMLInputElement).value).toBe(
+      link,
+    );
+  });
+  it("preserves an invalid draft for correction without saving it", async () => {
+    const onSave = vi.fn();
+    render(<TaskForm task={task} busy={false} onSave={onSave} />);
+    fireEvent.change(screen.getByLabelText(/Link/), {
+      target: { value: "javascript:alert(1)" },
+    });
+    fireEvent.submit(
+      screen.getByRole("button", { name: "Save changes" }).closest("form")!,
+    );
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "http:// or https://",
+    );
+    expect(onSave).not.toHaveBeenCalled();
+    expect((screen.getByLabelText(/Link/) as HTMLInputElement).value).toBe(
+      "javascript:alert(1)",
+    );
+  });
+});

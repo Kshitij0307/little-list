@@ -9,6 +9,7 @@ import {
   sortTasks,
   taskFieldsSchema,
   taskSchema,
+  updateTaskSchema,
 } from "../src/features/tasks/domain/task";
 
 const input = createTaskSchema.parse({
@@ -102,6 +103,38 @@ describe("task lifecycle", () => {
         "done",
       )[0].id,
     ).toBe(starred.id);
+  });
+});
+
+describe("task links", () => {
+  it("accepts and trims web links while older tasks default to no link", () => {
+    const link = "https://www.linkedin.com/posts/example?ref=saved#details";
+    const linked = makeTask(
+      createTaskSchema.parse({ ...input, link_url: ` ${link} ` }),
+    );
+    expect(linked.link_url).toBe(link);
+    const older: Partial<typeof linked> = { ...linked };
+    delete older.link_url;
+    expect(taskSchema.parse(older).link_url).toBeNull();
+    expect(applyTaskPatch(linked, { link_url: null }).link_url).toBeNull();
+    expect(updateTaskSchema.parse({ title: "New context" })).toEqual({
+      title: "New context",
+    });
+  });
+  it.each([
+    "javascript:alert(1)",
+    "data:text/html,example",
+    "ftp://example.com/file",
+    "https://user:password@example.com",
+    "not a link",
+    "https:example.com",
+    "https://example.com/a b",
+    `https://example.com/${"a".repeat(2048)}`,
+  ])("rejects an invalid or unsafe link: %s", (link_url) => {
+    expect(createTaskSchema.safeParse({ ...input, link_url }).success).toBe(
+      false,
+    );
+    expect(updateTaskSchema.safeParse({ link_url }).success).toBe(false);
   });
 });
 

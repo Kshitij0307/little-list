@@ -18,6 +18,25 @@ const dateOnly = z
     );
   }, "Choose a valid date.");
 
+const taskLink = z
+  .string()
+  .trim()
+  .max(2048, "Keep the link under 2,048 characters.")
+  .refine((value) => {
+    try {
+      const url = new URL(value);
+      return (
+        ["http:", "https:"].includes(url.protocol) &&
+        /^https?:\/\//i.test(value) &&
+        !url.username &&
+        !url.password &&
+        !/\s/.test(value)
+      );
+    } catch {
+      return false;
+    }
+  }, "Enter a valid http:// or https:// link.");
+
 const editableTaskSchema = z.object({
   title: z
     .string()
@@ -25,6 +44,7 @@ const editableTaskSchema = z.object({
     .min(1, "Give your task a title.")
     .max(200, "Keep the title under 200 characters."),
   notes: z.string().max(5000, "Keep notes under 5,000 characters."),
+  link_url: taskLink.nullable(),
   status: z.enum(STATUSES),
   starred: z.boolean(),
   focus_today: z.boolean(),
@@ -32,6 +52,7 @@ const editableTaskSchema = z.object({
 });
 export const taskFieldsSchema = editableTaskSchema.extend({
   notes: editableTaskSchema.shape.notes.default(""),
+  link_url: editableTaskSchema.shape.link_url.default(null),
   status: editableTaskSchema.shape.status.default("todo"),
   starred: editableTaskSchema.shape.starred.default(false),
   focus_today: editableTaskSchema.shape.focus_today.default(false),
