@@ -1,12 +1,25 @@
 @import "tailwindcss";
 
 :root {
+  --font-heading: Georgia, "Times New Roman", serif;
+  --font-body: Arial, Helvetica, sans-serif;
+  --text-caption: 11px;
+  --text-small: 12px;
+  --text-body: 14px;
+  --text-section: 22px;
+  --text-title: clamp(29px, 4vw, 39px);
+  --text-page: clamp(36px, 6vw, 44px);
+  --text-hero: clamp(42px, 5vw, 58px);
+  --paper-radius: 9px;
+  --paper-edges:
+    5px 5px 0 var(--background), 6px 6px 0 var(--line),
+    10px 10px 0 var(--background), 11px 11px 0 var(--line);
   --background: #f7f4ed;
   --surface: #fffcf6;
   --surface-alt: #f0ece3;
   --ink: #302d26;
   --muted: #746f63;
-  --subtle: #8a8376;
+  --subtle: #756e61;
   --line: #e4ded1;
   --accent: #626d43;
   --accent-hover: #505b35;
@@ -43,9 +56,15 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--ink);
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 14px;
+  font-family: var(--font-body);
+  font-size: var(--text-body);
   -webkit-font-smoothing: antialiased;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: 400;
 }
 button,
 input,
@@ -62,6 +81,12 @@ select {
 }
 button {
   cursor: pointer;
+}
+input[type="checkbox"]:enabled {
+  cursor: pointer;
+}
+input[type="checkbox"]:disabled {
+  cursor: not-allowed;
 }
 button:disabled {
   cursor: not-allowed;

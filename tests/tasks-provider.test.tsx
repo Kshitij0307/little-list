@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
+  act,
   fireEvent,
   render,
   screen,
@@ -17,7 +18,10 @@ import { createTaskSchema, makeTask } from "../src/features/tasks/domain/task";
 
 import { TaskDetail } from "../src/features/tasks/components/task-detail";
 import { SubtaskSection } from "../src/features/tasks/components/subtask-section";
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+import { TaskListView } from "../src/features/tasks/components/task-list-view";
+import { SessionBoundary } from "../src/features/auth/components/session-boundary";
+const navigation = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
 
 const gateway = vi.hoisted(() => ({
   list: vi.fn(),
@@ -81,7 +85,47 @@ beforeEach(() => {
   vi.resetAllMocks();
   gateway.list.mockResolvedValue([task]);
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+it("opens a task while focus verification is pending and stays on its details after verification", async () => {
+  let finish!: (response: Response) => void;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    ),
+  );
+  function RoutedNotebook() {
+    const [taskId, setTaskId] = useState<string | null>(null);
+    useEffect(() => {
+      navigation.push.mockImplementation((path: string) =>
+        setTaskId(path.slice("/tasks/".length)),
+      );
+    }, []);
+    return (
+      <SessionBoundary userId="owner-a">
+        <TasksProvider mode="local">
+          {taskId ? <TaskDetail taskId={taskId} /> : <TaskListView />}
+        </TasksProvider>
+      </SessionBoundary>
+    );
+  }
+  render(<RoutedNotebook />);
+  await screen.findByRole("button", { name: `Edit ${task.title}` });
+  fireEvent.focus(window);
+  fireEvent.click(screen.getByRole("button", { name: `Edit ${task.title}` }));
+  expect(navigation.push).toHaveBeenCalledWith(`/tasks/${task.id}`);
+  expect(screen.getByRole("heading", { name: task.title })).toBeTruthy();
+  await act(async () => finish(Response.json({ userId: "owner-a" })));
+  expect(screen.getByRole("heading", { name: task.title })).toBeTruthy();
+  expect(screen.queryByPlaceholderText("What’s on your mind?")).toBeNull();
+});
 
 it("keeps subtask counts and sorted status rows scoped to the current parent", async () => {
   const child = {
@@ -204,7 +248,7 @@ describe("task route load failures", () => {
       </TasksProvider>,
     );
     await screen.findByText("Your task could not be loaded.");
-    expect(screen.queryByText("This task could not be found.")).toBeNull();
+    expect(screen.queryByText("A page out of place.")).toBeNull();
     expect(screen.getByRole("alert").textContent).toContain(
       "Notebook unavailable",
     );
@@ -220,9 +264,58 @@ describe("task route load failures", () => {
         <TaskDetail taskId={task.id} />
       </TasksProvider>,
     );
-    await screen.findByText("This task could not be found.");
+    await screen.findByText("A page out of place.");
     expect(screen.queryByRole("alert")).toBeNull();
   });
+});
+
+it("shows skeletons without false zero counts during first load and retains tasks during background refresh", async () => {
+  let finish!: (tasks: (typeof task)[]) => void;
+  gateway.list.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  render(
+    <TasksProvider mode="local">
+      <TaskListView />
+    </TasksProvider>,
+  );
+  expect(screen.getByRole("status", { name: "Loading tasks" })).toBeTruthy();
+  expect(screen.getByRole("tab", { name: "Todo" })).toBeTruthy();
+  expect(
+    screen.queryByText("Good things start with a little list."),
+  ).toBeNull();
+  await waitFor(() => expect(gateway.list).toHaveBeenCalledOnce());
+  await act(async () => finish([task]));
+  expect(screen.getByText(task.title)).toBeTruthy();
+  expect(screen.getByRole("tab", { name: "Todo 1" })).toBeTruthy();
+  fireEvent.focus(window);
+  expect(gateway.list).toHaveBeenCalledTimes(2);
+  expect(screen.queryByRole("status", { name: "Loading tasks" })).toBeNull();
+  expect(screen.getByText(task.title)).toBeTruthy();
+  await act(async () => finish([task]));
+});
+
+it("clears search without losing keyboard focus and restores the task list", async () => {
+  render(
+    <TasksProvider mode="local">
+      <TaskListView />
+    </TasksProvider>,
+  );
+  await screen.findByRole("button", { name: `Edit ${task.title}` });
+  const search = screen.getByRole("textbox", { name: "Search tasks" });
+  fireEvent.change(search, { target: { value: "No matching task" } });
+  expect(
+    screen.queryByRole("button", { name: `Edit ${task.title}` }),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+  expect((search as HTMLInputElement).value).toBe("");
+  expect(document.activeElement).toBe(search);
+  expect(
+    screen.getByRole("button", { name: `Edit ${task.title}` }),
+  ).toBeTruthy();
 });
 
 it("starts a separate local draft when navigating to a different task", async () => {

@@ -9,7 +9,9 @@ const config: NextConfig = {
         source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "no-referrer" },
+          // Native form POSTs need their same-origin Origin for Server Actions.
+          // no-referrer turns it into "null" before hydration, failing CSRF checks.
+          { key: "Referrer-Policy", value: "same-origin" },
           { key: "X-Frame-Options", value: "DENY" },
         ],
       },

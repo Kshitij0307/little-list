@@ -22,15 +22,15 @@
   transform: rotate(5deg);
 }
 .empty-state h2 {
-  font-family: Georgia, serif;
+  font-family: var(--font-heading);
   font-weight: 400;
-  font-size: 22px;
+  font-size: var(--text-section);
   letter-spacing: -0.5px;
   margin: 0;
 }
 .empty-state p {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-small);
   line-height: 1.8;
   max-width: 340px;
   margin: 0;
@@ -44,7 +44,7 @@
   border-radius: 7px;
   margin: 0 26px 15px;
   padding: 10px 12px;
-  font-size: 12px;
+  font-size: var(--text-small);
   line-height: 1.5;
   color: var(--danger);
 }

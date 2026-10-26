@@ -13,7 +13,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px;
-  font-size: 12px;
+  font-size: var(--text-small);
   cursor: pointer;
   border-radius: 5px;
   color: var(--ink);

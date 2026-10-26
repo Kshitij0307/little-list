@@ -38,8 +38,8 @@ describe("task draft ownership", () => {
     expect((screen.getByLabelText(/Notes/) as HTMLTextAreaElement).value).toBe(
       refreshed.notes,
     );
-    expect((screen.getByLabelText("Status") as HTMLSelectElement).value).toBe(
-      "in_progress",
+    expect(screen.getByLabelText("Status").textContent).toContain(
+      "In progress",
     );
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() =>
@@ -132,6 +132,18 @@ describe("task draft ownership", () => {
       ).disabled,
     ).toBe(true);
   });
+});
+
+it("changes status through the themed menu using the keyboard and saves the selected value", async () => {
+  const onSave = vi.fn().mockResolvedValue(true);
+  render(<TaskForm task={task} busy={false} onSave={onSave} />);
+  const trigger = screen.getByLabelText("Status");
+  fireEvent.keyDown(trigger, { key: "ArrowDown" });
+  const done = await screen.findByRole("menuitemradio", { name: "Done" });
+  fireEvent.keyDown(done, { key: "Enter" });
+  expect(trigger.textContent).toContain("Done");
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith({ status: "done" }));
 });
 
 it("sends an explicit null when clearing an existing due date", async () => {

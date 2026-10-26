@@ -51,7 +51,7 @@
   padding: 18px 27px;
 }
 .list-subheader p {
-  font-size: 12px;
+  font-size: var(--text-small);
   color: var(--muted);
   margin: 0;
 }
@@ -65,18 +65,14 @@
   width: 112px;
   border: 0;
   color: var(--ink);
-  font-size: 12px;
+  font-size: var(--text-small);
   background: transparent;
   padding: 4px 0;
 }
-.search-box button {
-  color: var(--muted);
-  background: transparent;
-  border: 0;
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
+.clear-search {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
 }
 .task-panel {
   min-height: 240px;
@@ -123,7 +119,7 @@
     padding-left: 9px;
   }
   .quick-add button[type="submit"] {
-    font-size: 12px;
+    font-size: var(--text-small);
     padding: 0 11px;
     min-height: 44px;
   }
@@ -142,7 +138,7 @@
   }
   .list-subheader p {
     width: 100%;
-    font-size: 11px;
+    font-size: var(--text-caption);
   }
   .search-box {
     width: 100%;

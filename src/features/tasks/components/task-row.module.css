@@ -2,7 +2,7 @@
   display: flex;
   align-items: center;
   gap: 13px;
-  padding: 16px 0;
+  min-height: 68px;
   border-bottom: 1px solid var(--line);
   animation: appear 0.2s ease-out;
 }
@@ -11,8 +11,8 @@
 }
 .task-check {
   flex-shrink: 0;
-  width: 30px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   background: transparent;
   color: var(--subtle);
   border: 0;
@@ -20,16 +20,22 @@
   place-items: center;
   border-radius: 50%;
 }
-.task-check:hover {
+.task-check:hover:not(:disabled) {
   color: var(--accent);
   background: var(--accent-soft);
 }
 .task-done .task-check {
   color: var(--accent);
-  background: var(--accent-soft);
+}
+.check-icon {
+  display: grid;
+  place-items: center;
   width: 28px;
   height: 28px;
-  margin-right: 2px;
+  border-radius: 50%;
+}
+.task-done .check-icon {
+  background: var(--accent-soft);
 }
 .task-copy {
   min-width: 0;
@@ -38,14 +44,22 @@
   border: 0;
   background: transparent;
   color: var(--ink);
-  padding: 3px 0;
+  align-self: stretch;
+  justify-content: center;
+  min-height: 68px;
+  padding: 16px 6px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  border-radius: 3px;
+  border-radius: 5px;
+  transition: background 0.15s;
+}
+.task-copy:hover:not(:disabled),
+.task-copy:focus-visible {
+  background: var(--surface-alt);
 }
 .task-title {
-  font-size: 14px;
+  font-size: var(--text-body);
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
@@ -55,7 +69,7 @@
   text-decoration-color: var(--subtle);
 }
 .task-note {
-  font-size: 12px;
+  font-size: var(--text-small);
   color: var(--muted);
   overflow: hidden;
   white-space: nowrap;
@@ -116,25 +130,18 @@
 @media (max-width: 480px) {
   .task-row {
     display: grid;
-    grid-template-columns: 30px minmax(0, 1fr);
+    grid-template-columns: 44px minmax(0, 1fr);
     column-gap: 9px;
     row-gap: 7px;
     padding: 15px 0;
     align-items: start;
   }
-  .task-check {
-    min-height: 44px;
-    width: 30px;
-  }
-  .task-done .task-check {
-    margin-top: 7px;
-    min-height: 28px;
-  }
   .task-copy {
-    padding-top: 8px;
+    min-height: 44px;
+    padding: 8px 6px;
   }
   .task-title {
-    font-size: 14px;
+    font-size: var(--text-body);
   }
   .task-actions {
     grid-column: 2;
@@ -149,6 +156,6 @@
     min-width: 44px;
   }
   .task-note {
-    font-size: 12px;
+    font-size: var(--text-small);
   }
 }

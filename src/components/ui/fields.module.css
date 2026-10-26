@@ -2,7 +2,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--text-small);
   font-weight: 500;
   margin-top: 7px;
   margin-bottom: 0;
@@ -14,13 +14,14 @@
   margin-left: 4px;
 }
 .field {
+  min-width: 0;
   width: 100%;
   border: 1px solid var(--line);
   background: var(--background);
   color: var(--ink);
   border-radius: 7px;
   padding: 11px 12px;
-  font-size: 14px;
+  font-size: var(--text-body);
   min-height: 44px;
 }
 .field:focus {
@@ -33,7 +34,7 @@
 }
 .form-error {
   color: var(--danger);
-  font-size: 12px;
+  font-size: var(--text-small);
   line-height: 1.5;
   margin: 0;
 }

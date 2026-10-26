@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
-import { Feather } from "lucide-react";
-import { ThemeMenu } from "@/components/theme-menu";
+import { Check } from "lucide-react";
+import { PageShell } from "@/components/page-shell";
+import paper from "@/components/ui/paper.module.css";
 import { AuthSubmitButton } from "@/features/auth/components/auth-submit-button";
 import styles from "@/features/auth/components/auth.module.css";
 import { signInWithGoogle } from "@/features/auth/server/actions";
@@ -18,40 +19,56 @@ export default async function LoginPage({
   if (await currentSession()) redirect("/");
   const { error } = await searchParams;
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <span className={styles.brand}>
-          <Feather size={22} /> little list.
-        </span>
-        <ThemeMenu />
-      </header>
-      <main className={styles.card}>
-        <p className={styles.eyebrow}>A little space for you</p>
-        <h1>
-          Your thoughts.
-          <br />
-          Your little list.
-        </h1>
-        <p className={styles.copy}>
-          A calm place for everything you want to do. Sign in to keep your
-          personal notebook with you, on any device.
-        </p>
-        {error && (
-          <p className={styles.error} role="alert">
-            We couldn’t finish signing you in. Please try again.
-          </p>
-        )}
-        <form action={signInWithGoogle}>
-          <AuthSubmitButton pendingLabel="Connecting to Google…">
-            Continue with Google
-          </AuthSubmitButton>
-        </form>
-        <p className={styles.note}>
-          Your tasks belong to your account. Other users can’t see or change
-          them.
-        </p>
-      </main>
-      <footer className={styles.footer}>Less noise. More doing.</footer>
-    </div>
+    <PageShell>
+      <div className={styles.center}>
+        <main className={`${paper.surface} ${paper.margin} ${styles.card}`}>
+          <h1>
+            Big thoughts.
+            <br />
+            Little steps.
+          </h1>
+          <p className={styles.copy}>One thing at a time.</p>
+          <div
+            className={styles.illustration}
+            aria-label="Illustrative task list"
+          >
+            <p className={styles.listLabel}>A little plan for today</p>
+            <ul className={styles.sampleList}>
+              <li>
+                <span className={styles.checkbox} aria-hidden="true" />
+                Make something lovely
+              </li>
+              <li>
+                <span className={styles.checkbox} aria-hidden="true" />
+                Take a walk
+              </li>
+              <li className={styles.completed}>
+                <span
+                  className={`${styles.checkbox} ${styles.checked}`}
+                  aria-hidden="true"
+                >
+                  <Check size={11} />
+                </span>
+                <s>Start somewhere</s>
+              </li>
+            </ul>
+          </div>
+          {error && (
+            <p className={styles.error} role="alert">
+              We couldn’t finish signing you in. Please try again.
+            </p>
+          )}
+          <form action={signInWithGoogle}>
+            <AuthSubmitButton pendingLabel="Connecting to Google…">
+              <span className={styles.googleMark} aria-hidden="true">
+                G
+              </span>
+              Continue with Google
+            </AuthSubmitButton>
+          </form>
+          <p className={styles.note}>Personal. Private. On all your devices.</p>
+        </main>
+      </div>
+    </PageShell>
   );
 }

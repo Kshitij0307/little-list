@@ -9,17 +9,17 @@
 }
 .subtasks-heading h3 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--text-section);
+  font-weight: 400;
 }
 .subtasks-heading p {
   margin: 5px 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-small);
   line-height: 1.5;
 }
 .subtasks-heading > span {
-  font-size: 12px;
+  font-size: var(--text-small);
   color: var(--muted);
 }
 .subtask-add-form {
@@ -57,7 +57,7 @@ ul.subtask-list {
 .subtask-controls > p {
   margin: 11px 2px 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-caption);
 }
 .subtask-panel {
   min-height: 170px;
@@ -83,7 +83,7 @@ ul.subtask-list {
 }
 .subtask-empty p {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--text-small);
 }
 .existing-task-form {
   margin-top: 8px;
@@ -99,7 +99,7 @@ ul.subtask-list {
     align-self: flex-end;
   }
   .subtask-controls [role="tab"] {
-    font-size: 11px;
+    font-size: var(--text-caption);
     gap: 4px;
     padding-inline: 4px;
   }

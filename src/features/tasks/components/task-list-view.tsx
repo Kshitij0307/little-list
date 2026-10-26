@@ -7,7 +7,6 @@ import {
   ArrowRight,
   CheckCheck,
   Feather,
-  LoaderCircle,
   Plus,
   Search,
   Sun,
@@ -20,6 +19,7 @@ import { useTaskContext } from "../hooks/tasks-provider";
 import { TaskRow } from "./task-row";
 import { TaskStatusTabs } from "./task-status-tabs";
 import { TaskErrorBanner } from "./task-error-banner";
+import { TaskListSkeleton } from "./task-list-skeleton";
 const TAB_NOTES: Record<TaskStatus, string> = {
   todo: "A little space for what’s next.",
   in_progress: "One step at a time. You’re making progress.",
@@ -118,6 +118,7 @@ export function TaskListView() {
           tasks={roots}
           idPrefix="task"
           label="Task status"
+          loading={loading}
         />
         <Button
           variant="ghost"
@@ -145,12 +146,19 @@ export function TaskListView() {
             onChange={(e) => changeFilters({ query: e.target.value })}
           />
           {query ? (
-            <button
-              onClick={() => changeFilters({ query: "" })}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={listStyles["clear-search"]}
+              onClick={() => {
+                changeFilters({ query: "" });
+                searchInput.current?.focus();
+              }}
               aria-label="Clear search"
             >
               <X size={14} />
-            </button>
+            </Button>
           ) : (
             <kbd>/</kbd>
           )}
@@ -164,12 +172,10 @@ export function TaskListView() {
         aria-labelledby={`task-tab-${status}`}
         className={listStyles["task-panel"]}
         tabIndex={0}
+        aria-busy={loading}
       >
         {loading ? (
-          <div className={feedbackStyles["empty-state"]}>
-            <LoaderCircle className={feedbackStyles["spin"]} size={25} />
-            <h2>Opening your notebook…</h2>
-          </div>
+          <TaskListSkeleton />
         ) : visible.length ? (
           <ul className={listStyles["task-list"]}>
             {visible.map((task) => (

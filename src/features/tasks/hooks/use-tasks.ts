@@ -19,6 +19,7 @@ export function useTasks(mode: StorageMode) {
   const gateway = useMemo(() => createGateway(mode), [mode]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
@@ -28,6 +29,8 @@ export function useTasks(mode: StorageMode) {
   const reload = useCallback(async () => {
     if (lock.current) return;
     lock.current = true;
+    if (loaded.current) setRefreshing(true);
+    else setLoading(true);
     try {
       setTasks(await gateway.list());
       loaded.current = true;
@@ -37,6 +40,7 @@ export function useTasks(mode: StorageMode) {
     } finally {
       lock.current = false;
       setLoading(false);
+      setRefreshing(false);
     }
   }, [gateway]);
 
@@ -135,6 +139,7 @@ export function useTasks(mode: StorageMode) {
   return {
     tasks,
     loading,
+    refreshing,
     busy,
     error,
     reload,

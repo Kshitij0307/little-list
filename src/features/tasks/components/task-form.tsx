@@ -3,6 +3,7 @@ import formStyles from "./task-form.module.css";
 import fieldsStyles from "@/components/ui/fields.module.css";
 import { CalendarDays, Star, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ChoiceMenu } from "@/components/ui/choice-menu";
 import {
   STATUSES,
   STATUS_LABELS,
@@ -65,21 +66,17 @@ export function TaskForm({
           <label className={fieldsStyles["field-label"]} htmlFor="task-status">
             Status
           </label>
-          <select
-            className={fieldsStyles["field"]}
+          <ChoiceMenu
             id="task-status"
             value={values.status}
-            onChange={(event) =>
-              change("status", event.target.value as TaskStatus)
-            }
+            onChange={(status) => change("status", status as TaskStatus)}
             disabled={busy}
-          >
-            {STATUSES.map((item) => (
-              <option key={item} value={item}>
-                {STATUS_LABELS[item]}
-              </option>
-            ))}
-          </select>
+            menuLabel="Task status"
+            options={STATUSES.map((status) => ({
+              value: status,
+              label: STATUS_LABELS[status],
+            }))}
+          />
         </div>
         <div>
           <label className={fieldsStyles["field-label"]} htmlFor="task-due">

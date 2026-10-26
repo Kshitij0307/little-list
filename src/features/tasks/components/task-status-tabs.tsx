@@ -16,12 +16,14 @@ export function TaskStatusTabs({
   tasks,
   idPrefix,
   label,
+  loading = false,
 }: {
   value: TaskStatus;
   onChange(status: TaskStatus): void;
   tasks: Task[];
   idPrefix: string;
   label: string;
+  loading?: boolean;
 }) {
   const buttons = useRef<Partial<Record<TaskStatus, HTMLButtonElement | null>>>(
     {},
@@ -68,9 +70,16 @@ export function TaskStatusTabs({
           }}
         >
           {STATUS_LABELS[status]}
-          <span className={tabsStyles["tab-count"]}>
-            {tasks.filter((task) => task.status === status).length}
-          </span>
+          {loading ? (
+            <span
+              className={tabsStyles["count-placeholder"]}
+              aria-hidden="true"
+            />
+          ) : (
+            <span className={tabsStyles["tab-count"]}>
+              {tasks.filter((task) => task.status === status).length}
+            </span>
+          )}
         </button>
       ))}
     </div>

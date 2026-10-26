@@ -1,0 +1,35 @@
+.page {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  padding: 28px clamp(20px, 5vw, 72px);
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.caption {
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+.footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: var(--text-small);
+  padding-top: 24px;
+}
+@media (max-width: 650px) {
+  .page {
+    padding: 23px 20px;
+  }
+  .caption {
+    display: none;
+  }
+}

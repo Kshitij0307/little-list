@@ -1,0 +1,88 @@
+.list {
+  padding: 0 26px 17px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+.row:last-child {
+  border-bottom: 0;
+}
+.checkbox,
+.title,
+.note,
+.action {
+  display: block;
+  background: var(--line);
+  border-radius: 4px;
+  animation: breathe 1.5s ease-in-out infinite;
+}
+.checkbox {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin: 0 7px;
+}
+.copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.title {
+  height: 9px;
+  width: 57%;
+}
+.note {
+  height: 7px;
+  width: 32%;
+  opacity: 0.65;
+}
+.action {
+  width: 42px;
+  height: 8px;
+  opacity: 0.65;
+}
+.row:nth-child(2) .title {
+  width: 43%;
+}
+.row:nth-child(3) .title {
+  width: 68%;
+}
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (max-width: 700px) {
+  .list {
+    padding: 0 18px 15px;
+  }
+}
+@media (max-width: 480px) {
+  .list {
+    padding: 0 15px 12px;
+  }
+  .title {
+    width: 72%;
+  }
+  .action {
+    width: 25px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .checkbox,
+  .title,
+  .note,
+  .action {
+    animation: none;
+  }
+}

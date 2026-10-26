@@ -1,0 +1,62 @@
+.center {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 40px 12px 40px 0;
+}
+.embedded {
+  min-height: 410px;
+  padding: 40px 26px;
+}
+.note {
+  width: min(100%, 440px);
+  padding: 34px 32px 32px 48px;
+}
+.eyebrow {
+  margin: 0 0 16px;
+  color: var(--accent);
+  font-size: var(--text-caption);
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+.code {
+  margin: 0 0 20px;
+  color: var(--accent);
+  font: 400 56px/1 var(--font-heading);
+  letter-spacing: -2px;
+}
+.note h1,
+.note h2 {
+  font-size: clamp(29px, 4vw, 32px);
+  line-height: 1.18;
+  letter-spacing: -0.5px;
+  margin: 0 0 13px;
+  overflow-wrap: anywhere;
+}
+.copy {
+  max-width: 305px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 0;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 26px;
+}
+@media (max-width: 480px) {
+  .note {
+    --paper-margin: 21px;
+    padding: 30px 22px 28px 40px;
+  }
+  .embedded {
+    padding: 34px 20px;
+  }
+  .actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

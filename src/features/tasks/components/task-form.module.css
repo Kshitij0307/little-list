@@ -5,7 +5,7 @@
 }
 .editor-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 .editor-grid label {
@@ -22,13 +22,22 @@
   align-items: center;
   gap: 7px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-small);
   cursor: pointer;
 }
 .editor-toggles input {
   accent-color: var(--accent);
   width: 17px;
   height: 17px;
+}
+.editor-toggles label:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+@media (pointer: coarse), (max-width: 480px) {
+  .editor-toggles label {
+    min-height: 44px;
+  }
 }
 .editor-footer {
   display: flex;
@@ -46,14 +55,19 @@
   padding: 28px;
   align-content: start;
 }
+@media (max-width: 360px) {
+  .editor-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .editor-form > h3 {
   margin: 0 0 4px;
-  font-size: 18px;
+  font-size: var(--text-section);
 }
 .inline-save-note {
   margin-right: auto;
   color: var(--accent);
-  font-size: 11px;
+  font-size: var(--text-caption);
 }
 @media (max-width: 480px) {
   .editor-form {

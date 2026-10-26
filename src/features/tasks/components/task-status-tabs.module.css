@@ -32,6 +32,12 @@
   background: var(--surface-alt);
   color: var(--muted);
 }
+.count-placeholder {
+  width: 14px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+}
 .active .tab-count {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent);
@@ -51,7 +57,7 @@
     grid-template-columns: 1fr 1.35fr 1fr;
   }
   .status-tab {
-    font-size: 12px;
+    font-size: var(--text-small);
     gap: 6px;
     padding: 10px 6px;
     min-height: 44px;

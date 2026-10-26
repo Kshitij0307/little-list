@@ -8,6 +8,7 @@ const buttonVariants = cva(buttonStyles["button"], {
     variant: {
       default: buttonStyles["button-primary"],
       secondary: buttonStyles["button-secondary"],
+      outline: buttonStyles["button-outline"],
       ghost: buttonStyles["button-ghost"],
       danger: buttonStyles["button-danger"],
     },

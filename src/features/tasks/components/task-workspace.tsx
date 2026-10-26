@@ -8,7 +8,6 @@ import {
   ArrowDownToLine,
   Check,
   Cloud,
-  Feather,
   HardDrive,
   LoaderCircle,
   Sun,
@@ -16,6 +15,9 @@ import {
 } from "lucide-react";
 import { ThemeMenu } from "@/components/theme-menu";
 import { Button } from "@/components/ui/button";
+import { Brand } from "@/components/brand";
+import paper from "@/components/ui/paper.module.css";
+import { NotebookStatus } from "@/components/notebook-status";
 import { localDate, mainTasks } from "../domain/task";
 import { useTaskContext } from "../hooks/tasks-provider";
 export function TaskWorkspace({
@@ -25,8 +27,17 @@ export function TaskWorkspace({
   children: ReactNode;
   account?: ReactNode;
 }) {
-  const { mode, tasks, loading, busy, error, undoAction, undo, dismissUndo } =
-    useTaskContext();
+  const {
+    mode,
+    tasks,
+    loading,
+    refreshing,
+    busy,
+    error,
+    undoAction,
+    undo,
+    dismissUndo,
+  } = useTaskContext();
   const isDetail = usePathname() !== "/";
   const [today, setToday] = useState("");
   useEffect(() => {
@@ -43,6 +54,7 @@ export function TaskWorkspace({
     );
     return () => clearTimeout(timer);
   }, []);
+  if (isDetail && loading) return <NotebookStatus />;
   const completedToday = mainTasks(tasks).filter(
     (task) =>
       task.completed_at &&
@@ -71,15 +83,8 @@ export function TaskWorkspace({
   return (
     <div className={workspaceStyles["app-shell"]}>
       <header className={workspaceStyles["site-header"]}>
-        <Link
-          href="/"
-          className={workspaceStyles["brand"]}
-          aria-label="Little list home"
-        >
-          <span className={workspaceStyles["brand-mark"]}>
-            <Feather size={20} />
-          </span>
-          little list<span className={workspaceStyles["brand-dot"]}>.</span>
+        <Link href="/" aria-label="Little list home">
+          <Brand />
         </Link>
         <div className={workspaceStyles["header-actions"]}>
           <span className={workspaceStyles["header-caption"]}>
@@ -121,7 +126,7 @@ export function TaskWorkspace({
         </section>
 
         <section
-          className={workspaceStyles["notebook"]}
+          className={`${paper.surface} ${paper.margin} ${workspaceStyles["notebook"]}`}
           aria-label="Your tasks"
         >
           {children}
@@ -132,10 +137,15 @@ export function TaskWorkspace({
                   <LoaderCircle size={13} className={feedbackStyles["spin"]} />
                   Saving…
                 </>
-              ) : error ? (
-                "Changes need attention"
               ) : loading ? (
                 "Loading…"
+              ) : refreshing ? (
+                <>
+                  <Cloud size={13} />
+                  Syncing…
+                </>
+              ) : error ? (
+                "Changes need attention"
               ) : (
                 <>
                   <Check size={14} />

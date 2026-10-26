@@ -1,4 +1,5 @@
-button.task-picker-trigger {
+button.trigger {
+  width: 100%;
   flex: 1;
   min-width: 0;
   min-height: 44px;
@@ -7,40 +8,41 @@ button.task-picker-trigger {
   background: var(--background);
   text-align: left;
 }
-button.task-picker-trigger:hover:not(:disabled) {
+button.trigger:hover:not(:disabled) {
   background: var(--background);
   border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
 }
-button.task-picker-trigger[data-state="open"] {
+button.trigger[data-state="open"] {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.task-picker-value {
+.value {
+  flex: 1;
   display: flex;
   align-items: baseline;
   min-width: 0;
   gap: 7px;
 }
-.task-picker-title {
+.title {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-button.task-picker-trigger-status {
+.trigger-status {
   flex-shrink: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-caption);
 }
-.task-picker-chevron {
+.chevron {
   flex-shrink: 0;
   color: var(--muted);
   transition: transform 0.16s ease;
 }
-button.task-picker-trigger[data-state="open"] .task-picker-chevron {
+button.trigger[data-state="open"] .chevron {
   transform: rotate(180deg);
 }
-.task-picker-content[data-state] {
+.content[data-state] {
   width: var(--radix-dropdown-menu-trigger-width);
   max-height: min(320px, var(--radix-dropdown-menu-content-available-height));
   overflow-y: auto;
@@ -53,7 +55,7 @@ button.task-picker-trigger[data-state="open"] .task-picker-chevron {
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
 }
-.task-picker-label {
+.label {
   padding: 7px 9px 9px 34px;
   color: var(--muted);
   font-size: 10px;
@@ -61,37 +63,37 @@ button.task-picker-trigger[data-state="open"] .task-picker-chevron {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.task-picker-option[role] {
+.option[role] {
   min-height: 48px;
   gap: 9px;
   padding: 7px 9px;
   border: 1px solid transparent;
   border-radius: 7px;
 }
-.task-picker-option[data-highlighted] {
+.option[data-highlighted] {
   border-color: color-mix(in srgb, var(--accent) 15%, transparent);
 }
-.task-picker-option.selected {
+.option.selected {
   color: var(--accent);
   background: var(--accent-soft);
 }
-.task-picker-check {
+.check {
   display: grid;
   place-items: center;
   flex: 0 0 16px;
   color: var(--accent);
 }
-.task-picker-copy {
+.copy {
   display: flex;
   flex-direction: column;
   min-width: 0;
   gap: 3px;
 }
-.task-picker-copy .task-picker-title {
+.copy .title {
   font-size: 13px;
   font-weight: 500;
 }
-.task-picker-status {
+.status {
   color: var(--muted);
   font-size: 10px;
 }

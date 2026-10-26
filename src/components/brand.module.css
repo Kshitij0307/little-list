@@ -1,0 +1,14 @@
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-family: var(--font-heading);
+  font-size: 23px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.brand svg {
+  color: var(--accent);
+  flex: none;
+}

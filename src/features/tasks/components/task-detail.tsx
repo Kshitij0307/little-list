@@ -3,7 +3,9 @@ import feedbackStyles from "@/components/ui/feedback.module.css";
 import detailStyles from "./task-detail.module.css";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Feather, LoaderCircle } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { NotebookStatus } from "@/components/notebook-status";
+import { NotebookNotice } from "@/components/notebook-notice";
 import { Button } from "@/components/ui/button";
 import { useTaskContext } from "../hooks/tasks-provider";
 import { TaskForm } from "./task-form";
@@ -13,17 +15,14 @@ export function TaskDetail({ taskId }: { taskId: string }) {
   const { tasks, loading, busy, error, update } = useTaskContext();
   const router = useRouter();
   const task = tasks.find((item) => item.id === taskId && !item.deleted_at);
-  if (loading)
+  if (loading) return <NotebookStatus embedded />;
+  if (!task && !error)
     return (
-      <div
-        className={[
-          feedbackStyles["empty-state"],
-          feedbackStyles["task-route-state"],
-        ].join(" ")}
-      >
-        <LoaderCircle className={feedbackStyles["spin"]} size={25} />
-        <h2>Opening task details…</h2>
-      </div>
+      <NotebookNotice
+        kind="not-found"
+        embedded
+        description="We couldn’t find this task in your notebook. Check the link, or head back to your notebook."
+      />
     );
   if (!task)
     return (
@@ -33,23 +32,11 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           feedbackStyles["task-route-state"],
         ].join(" ")}
       >
-        {error ? (
-          <>
-            <h2>Your task could not be loaded.</h2>
-            <TaskErrorBanner />
-          </>
-        ) : (
-          <>
-            <span className={feedbackStyles["empty-icon"]}>
-              <Feather size={30} strokeWidth={1.3} />
-            </span>
-            <h2>This task could not be found.</h2>
-            <p>It may have been deleted or moved from this notebook.</p>
-          </>
-        )}
+        <h2>Your task could not be loaded.</h2>
+        <TaskErrorBanner />
         <Button variant="secondary" size="sm" asChild>
           <Link href="/">
-            <ArrowRight size={14} /> Back to all tasks
+            <ArrowLeft size={14} /> Back to notebook
           </Link>
         </Button>
       </div>

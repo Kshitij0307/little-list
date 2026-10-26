@@ -3,10 +3,17 @@ import {
   currentSession,
   requireTaskSession,
   AuthenticationRequiredError,
+  AuthenticationUnavailableError,
 } from "../src/features/auth/server/session";
 import { appOrigin } from "../src/lib/supabase/config";
 import { GET as callback } from "../src/app/auth/callback/route";
 import { errorResponse } from "../src/features/tasks/server/http";
+import { GET as sessionStatus } from "../src/app/api/auth/session/route";
+import {
+  AuthApiError,
+  AuthRetryableFetchError,
+  AuthSessionMissingError,
+} from "@supabase/supabase-js";
 
 const mocks = vi.hoisted(() => ({ getUser: vi.fn(), exchange: vi.fn() }));
 vi.mock("../src/lib/supabase/server", () => ({
@@ -32,11 +39,52 @@ describe("authentication boundary", () => {
     expect((await requireTaskSession()).user.id).toBe("verified-owner");
     mocks.getUser.mockResolvedValue({
       data: { user: { id: "untrusted" } },
-      error: new Error("Invalid token"),
+      error: new AuthApiError("Invalid token", 401, "bad_jwt"),
     });
     expect(await currentSession()).toBeNull();
     await expect(requireTaskSession()).rejects.toBeInstanceOf(
       AuthenticationRequiredError,
+    );
+  });
+  it("recognizes missing and revoked sessions without trusting returned user data", async () => {
+    for (const error of [
+      new AuthSessionMissingError(),
+      new AuthApiError("Revoked session", 400, "session_not_found"),
+    ]) {
+      mocks.getUser.mockResolvedValue({
+        data: { user: { id: "untrusted" } },
+        error,
+      });
+      const response = await sessionStatus();
+      expect(await response.json()).toEqual({ userId: null });
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+    }
+  });
+  it.each([
+    new AuthRetryableFetchError("Sensitive upstream detail", 503),
+    new AuthApiError("Rate limit detail", 429, "over_request_rate_limit"),
+  ])(
+    "reports unavailable verification separately from sign-out",
+    async (error) => {
+      mocks.getUser.mockResolvedValue({ data: { user: null }, error });
+      await expect(requireTaskSession()).rejects.toBeInstanceOf(
+        AuthenticationUnavailableError,
+      );
+      const response = await sessionStatus();
+      expect(response.status).toBe(503);
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+      expect(await response.json()).toEqual({
+        error: "We couldn’t verify your session. Please try again.",
+      });
+      expect(errorResponse(new AuthenticationUnavailableError()).status).toBe(
+        503,
+      );
+    },
+  );
+  it("handles a rejected Auth request without reporting a missing session", async () => {
+    mocks.getUser.mockRejectedValue(new TypeError("Failed to fetch"));
+    await expect(currentSession()).rejects.toBeInstanceOf(
+      AuthenticationUnavailableError,
     );
   });
   it("never opens the cloud database from local mode", async () => {

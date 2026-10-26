@@ -65,11 +65,13 @@ export function TaskRow({
           )
         }
       >
-        {done ? (
-          <Check size={18} strokeWidth={2.2} />
-        ) : (
-          <Circle size={22} strokeWidth={1.3} />
-        )}
+        <span className={rowStyles["check-icon"]} aria-hidden="true">
+          {done ? (
+            <Check size={18} strokeWidth={2.2} />
+          ) : (
+            <Circle size={22} strokeWidth={1.3} />
+          )}
+        </span>
       </button>
       <button
         className={rowStyles["task-copy"]}
