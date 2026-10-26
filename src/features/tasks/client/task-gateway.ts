@@ -15,6 +15,8 @@ import {
   applyTaskDeletion,
   parseDeletedTasks,
   taskDeletionSchema,
+  taskDeletionTargets,
+  repairDeletedTaskTrees,
   type TaskDeletion,
 } from "../domain/task-batch";
 
@@ -32,13 +34,17 @@ const STORAGE_KEY = "little-list.tasks.v1";
 function readLocal(): Task[] {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (!saved) return [];
+  let tasks: Task[];
   try {
-    return taskSchema.array().parse(JSON.parse(saved));
+    tasks = taskSchema.array().parse(JSON.parse(saved));
   } catch {
     throw new Error(
       "Your saved list could not be read. It has been left untouched.",
     );
   }
+  const repaired = repairDeletedTaskTrees(tasks);
+  if (repaired !== tasks) writeLocal(repaired);
+  return repaired;
 }
 
 function writeLocal(tasks: Task[]) {
@@ -139,7 +145,30 @@ export function createGateway(mode: StorageMode): TaskGateway {
       const task = applyTaskPatch(current, input);
       if (input.parent_id !== undefined)
         validateTaskParent(tasks, id, task.parent_id);
-      writeLocal(tasks.map((item) => (item.id === id ? task : item)));
+      const patched = tasks.map((item) => (item.id === id ? task : item));
+      if (
+        input.deleted_at !== undefined &&
+        input.deleted_at !== current.deleted_at
+      ) {
+        const deletion = taskDeletionSchema.parse({
+          ids: [id],
+          from_status: task.status,
+          parent_id: task.parent_id,
+          deleted_at: input.deleted_at ?? current.deleted_at,
+          restore: input.deleted_at === null,
+        });
+        // Keep the previous deletion state while applying other patched fields.
+        writeLocal(
+          applyTaskDeletion(
+            patched.map((item) =>
+              item.id === id
+                ? { ...task, deleted_at: current.deleted_at }
+                : item,
+            ),
+            deletion,
+          ),
+        );
+      } else writeLocal(patched);
       return task;
     },
     move: async (input) => {
@@ -150,9 +179,13 @@ export function createGateway(mode: StorageMode): TaskGateway {
     },
     remove: async (input) => {
       const deletion = taskDeletionSchema.parse(input);
-      const tasks = applyTaskDeletion(readLocal(), deletion);
+      const current = readLocal();
+      const ids = new Set(
+        taskDeletionTargets(current, deletion).map((task) => task.id),
+      );
+      const tasks = applyTaskDeletion(current, deletion);
       writeLocal(tasks);
-      return tasks.filter((task) => deletion.ids.includes(task.id));
+      return tasks.filter((task) => ids.has(task.id));
     },
   };
 }

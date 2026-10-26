@@ -152,8 +152,21 @@ export function useTasks(
     patch: TaskPatch,
     label = "Task updated",
     undoing = false,
-  ) =>
-    mutate(async () => {
+  ) => {
+    const current = tasks.find((task) => task.id === id);
+    if (patch.deleted_at && current)
+      return remove(
+        {
+          ids: [id],
+          from_status: current.status,
+          parent_id: current.parent_id,
+          deleted_at: patch.deleted_at,
+          restore: false,
+        },
+        [],
+        undoing,
+      );
+    return mutate(async () => {
       const current = tasks.find((task) => task.id === id);
       // Undo can restore a deleted task that is no longer in the visible collection.
       if (!current && !undoing)
@@ -181,6 +194,7 @@ export function useTasks(
         Object.assign(reverse, { [key]: current[key] });
       return { id, patch: reverse, label };
     });
+  };
 
   const move = (input: TaskMove, undoing = false) =>
     mutate(async () => {
@@ -202,7 +216,11 @@ export function useTasks(
           };
     });
 
-  const remove = (input: TaskDeletion, restoringTasks: Task[] = []) =>
+  const remove = (
+    input: TaskDeletion,
+    restoringTasks: Task[] = [],
+    undoing = false,
+  ) =>
     mutate(async () => {
       const deletion = taskDeletionSchema.parse(input);
       const base = [
@@ -211,18 +229,18 @@ export function useTasks(
           (task) => !tasks.some((current) => current.id === task.id),
         ),
       ];
-      setTasks(
-        applyTaskDeletion(base, deletion).filter((task) => !task.deleted_at),
-      );
+      const optimistic = applyTaskDeletion(base, deletion);
+      setTasks(optimistic.filter((task) => !task.deleted_at));
       const saved = await gateway.remove(deletion);
+      const affected = new Set(saved.map((task) => task.id));
       setTasks((items) => [
-        ...items.filter((task) => !deletion.ids.includes(task.id)),
+        ...items.filter((task) => !affected.has(task.id)),
         ...saved.filter((task) => !task.deleted_at),
       ]);
-      return deletion.restore
+      return deletion.restore || undoing
         ? null
         : {
-            label: `${deletion.ids.length} ${deletion.ids.length === 1 ? "task" : "tasks"} deleted`,
+            label: `${saved.length} ${saved.length === 1 ? "task" : "tasks"} deleted`,
             deletion: { ...deletion, restore: true },
             tasks: saved,
           };

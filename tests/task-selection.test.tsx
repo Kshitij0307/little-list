@@ -18,6 +18,8 @@ import type {
   TaskMove,
   TaskDeletion,
 } from "../src/features/tasks/domain/task-batch";
+import { applyTaskDeletion } from "../src/features/tasks/domain/task-batch";
+import { TaskDetail } from "../src/features/tasks/components/task-detail";
 
 const gateway = vi.hoisted(() => ({
   list: vi.fn(),
@@ -59,6 +61,74 @@ function UndoControl() {
 }
 beforeEach(() => vi.resetAllMocks());
 afterEach(cleanup);
+
+it.each([false, true])(
+  "removes and restores all descendant routes with one undo (bulk=%s)",
+  async (bulk) => {
+    const child = { ...second, parent_id: first.id, status: "done" as const };
+    const grandchild = { ...progress, parent_id: child.id };
+    let stored = [first, child, grandchild];
+    gateway.remove.mockImplementation(async (input: TaskDeletion) => {
+      stored = applyTaskDeletion(stored, input);
+      return stored;
+    });
+    function DeleteTree() {
+      const { update, remove, tasks } = useTaskContext();
+      return (
+        <>
+          <span>Active tasks: {tasks.length}</span>
+          <button
+            onClick={() =>
+              void (bulk
+                ? remove({
+                    ids: [first.id],
+                    from_status: "todo",
+                    parent_id: null,
+                    deleted_at: "2026-10-27T10:00:00Z",
+                    restore: false,
+                  })
+                : update(first.id, { deleted_at: "2026-10-27T10:00:00Z" }))
+            }
+          >
+            Delete parent
+          </button>
+          <UndoControl />
+          <TaskDetail taskId={grandchild.id} />
+        </>
+      );
+    }
+    render(
+      <TasksProvider
+        mode="cloud"
+        userId="owner"
+        initialState={{ tasks: stored }}
+      >
+        <DeleteTree />
+      </TasksProvider>,
+    );
+    expect(
+      screen.getByRole("heading", { name: grandchild.title }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Delete parent" }));
+    await screen.findByText("Active tasks: 0");
+    await screen.findByRole("heading", { name: "A page out of place." });
+    await waitFor(() =>
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Undo batch",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false),
+    );
+    expect(gateway.update).not.toHaveBeenCalled();
+    expect(stored.every((task) => !!task.deleted_at)).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Undo batch" }));
+    await screen.findByText("Active tasks: 3");
+    await screen.findByRole("heading", { name: grandchild.title });
+    expect(stored.every((task) => !task.deleted_at)).toBe(true);
+  },
+);
 
 async function destination(label: string) {
   fireEvent.keyDown(screen.getByRole("button", { name: "Move to…" }), {

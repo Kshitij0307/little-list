@@ -67,7 +67,7 @@ Browser-local tasks are not automatically copied to Supabase. Existing cloud tas
 
 For task links on an existing cloud database, review and apply [the task links migration](supabase/migrations/202610270001_add_task_links.sql) before using this version. It adds an optional `link_url` column and allows authenticated users to update it under the existing ownership policies. Older tasks keep their notes and have no link until one is added. Local mode needs no database migration. Links accept full HTTP or HTTPS URLs; remove a saved link by clearing the field and saving.
 
-Cloud bulk moves and deletion require [the batch actions migration](supabase/migrations/202610270002_batch_task_status.sql). Its transactions lock and validate the selected rows under the existing ownership policies before changing anything. Stale, inaccessible, or out-of-scope selections fail as a whole. Undo of bulk deletion restores only rows that still match that deletion's timestamp, status, and parent. Local mode saves the batch in one browser-storage write. If an earlier version of this batch migration is already installed, rerun the updated script to add the deletion operation.
+Cloud bulk moves and deletion require [the batch actions migration](supabase/migrations/202610270002_batch_task_status.sql). Its transactions lock and validate the selected rows under the existing ownership policies before changing anything. Stale, inaccessible, or out-of-scope selections fail as a whole. Undo checks the selected roots’ deletion timestamp, status, and parent, then restores the descendants marked by that same deletion. Local mode saves the batch in one browser-storage write. If an earlier version of this batch migration is already installed, rerun the updated script to add the deletion operation.
 
 ## Available commands
 
@@ -115,10 +115,12 @@ With `APP_STORAGE_MODE=local`, each browser has its own list without login; it i
 
 ## Data behavior
 
+For cloud notebooks, apply [the cascading deletion migration](supabase/migrations/202610270003_cascade_task_deletion.sql) after the batch actions migration. It adds database protection for individual and bulk deletion and marks any existing active descendants of deleted parents as deleted. Local browser data is repaired automatically when read. The batch RPC returns a single JSON array so large subtrees are not truncated by Supabase’s row limit.
+
 - Changes appear immediately and roll back if persistence fails.
 - One mutation runs at a time; overlapping writes are rejected while a save is in progress.
 - The app refreshes cloud data when the page opens or regains focus.
 - Forms preserve unsaved edits during refresh, update untouched fields from the latest task, and save only edited fields. Concurrent changes to the same field use last-write-wins behavior.
-- Deletion is soft, and one-step undo survives navigation within the notebook.
+- Deletion is soft and includes every nested subtask across all statuses. One-step Undo restores that group, leaving previously deleted branches deleted, and survives navigation within the notebook. A subtask cannot be restored beneath a deleted parent.
 - Completing a parent task does not automatically complete its subtasks.
 - Bulk selection stays within the current status and parent. Select all affects the visible filtered rows, up to 500 at a time; changing tabs, search, or focus filters clears selection. Successful moves exit selection mode, while failed moves restore the rows and keep selection for retry. Undo reverses the batch only if its tasks still belong to that parent and destination status. As with individual status changes, completion timestamps are recalculated on reopening or completing tasks.

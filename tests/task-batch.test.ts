@@ -33,6 +33,186 @@ const move = {
 };
 
 describe("batch status moves", () => {
+  it("repairs legacy browser orphans once without reviving old deleted branches", async () => {
+    const parent = { ...first, deleted_at: "2026-10-20T00:00:00Z" };
+    const child = { ...second, parent_id: first.id };
+    const grandchild = {
+      ...second,
+      id: crypto.randomUUID(),
+      parent_id: second.id,
+    };
+    const oldDeleted = {
+      ...child,
+      id: crypto.randomUUID(),
+      deleted_at: "2026-10-19T00:00:00Z",
+    };
+    const oldOrphan = {
+      ...grandchild,
+      id: crypto.randomUUID(),
+      parent_id: oldDeleted.id,
+    };
+    let stored = JSON.stringify([
+      parent,
+      child,
+      grandchild,
+      oldDeleted,
+      oldOrphan,
+    ]);
+    const setItem = vi.fn((_key: string, value: string) => {
+      stored = value;
+    });
+    vi.stubGlobal("localStorage", { getItem: () => stored, setItem });
+    try {
+      const gateway = createGateway("local");
+      expect((await gateway.list()).tasks).toEqual([]);
+      expect(setItem).toHaveBeenCalledOnce();
+      const repaired = JSON.parse(stored);
+      expect(
+        repaired.find((task: { id: string }) => task.id === child.id)
+          .deleted_at,
+      ).toBe(parent.deleted_at);
+      expect(
+        repaired.find((task: { id: string }) => task.id === oldOrphan.id)
+          .deleted_at,
+      ).toBe(oldDeleted.deleted_at);
+      await gateway.list();
+      expect(setItem).toHaveBeenCalledOnce();
+      await gateway.update(parent.id, { deleted_at: null });
+      expect((await gateway.list()).tasks.map((task) => task.id)).toEqual([
+        parent.id,
+        child.id,
+        grandchild.id,
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+  it("deletes nested tasks across statuses and restores only this deletion's tree", () => {
+    const child = {
+      ...first,
+      id: crypto.randomUUID(),
+      parent_id: first.id,
+      status: "done" as const,
+      completed_at: "2026-10-25T00:00:00Z",
+    };
+    const grandchild = {
+      ...second,
+      id: crypto.randomUUID(),
+      parent_id: child.id,
+      status: "in_progress" as const,
+    };
+    const previouslyDeleted = {
+      ...child,
+      id: crypto.randomUUID(),
+      deleted_at: "2026-10-24T00:00:00Z",
+    };
+    const oldGrandchild = {
+      ...grandchild,
+      id: crypto.randomUUID(),
+      parent_id: previouslyDeleted.id,
+      deleted_at: previouslyDeleted.deleted_at,
+    };
+    const original = [
+      first,
+      second,
+      child,
+      grandchild,
+      previouslyDeleted,
+      oldGrandchild,
+    ];
+    const input = taskDeletionSchema.parse({
+      ids: [first.id],
+      from_status: "todo",
+      parent_id: null,
+      deleted_at: "2026-10-27T10:00:00Z",
+      restore: false,
+    });
+    const deleted = applyTaskDeletion(original, input);
+    for (const id of [first.id, child.id, grandchild.id]) {
+      expect(deleted.find((task) => task.id === id)?.deleted_at).toBe(
+        input.deleted_at,
+      );
+    }
+    expect(deleted.find((task) => task.id === second.id)).toEqual(second);
+    expect(deleted.slice(-2)).toEqual(original.slice(-2));
+    const affected = deleted.filter(
+      (task) => task.deleted_at === input.deleted_at,
+    );
+    expect(parseDeletedTasks(affected, input)).toEqual(affected);
+    expect(() =>
+      parseDeletedTasks(
+        [...affected, { ...second, deleted_at: input.deleted_at }],
+        input,
+      ),
+    ).toThrow("Could not confirm");
+    const restored = applyTaskDeletion(deleted, { ...input, restore: true });
+    expect(restored).toEqual(
+      original.map((task) => ({
+        ...task,
+        updated_at: restored.find((item) => item.id === task.id)!.updated_at,
+      })),
+    );
+    expect(restored.find((task) => task.id === child.id)?.completed_at).toBe(
+      child.completed_at,
+    );
+    // Restoring a nested task on its own cannot leave it under a deleted parent.
+    expect(() =>
+      applyTaskDeletion(deleted, {
+        ...input,
+        ids: [child.id],
+        from_status: "done",
+        parent_id: first.id,
+        restore: true,
+      }),
+    ).toThrow("Parent task not found");
+  });
+
+  it("supports trees larger than the root selection limit and direct local deletion", async () => {
+    const children = Array.from({ length: 1001 }, () => ({
+      ...second,
+      id: crypto.randomUUID(),
+      parent_id: first.id,
+    }));
+    let stored = JSON.stringify([first, ...children, second]);
+    vi.stubGlobal("localStorage", {
+      getItem: () => stored,
+      setItem: (_key: string, value: string) => {
+        stored = value;
+      },
+    });
+    try {
+      const gateway = createGateway("local");
+      const deletionTime = "2026-10-27T10:00:00Z";
+      await gateway.update(first.id, { deleted_at: deletionTime });
+      expect((await gateway.list()).tasks).toEqual([second]);
+      await expect(
+        gateway.create(
+          createTaskSchema.parse({
+            id: crypto.randomUUID(),
+            title: "Too late",
+            parent_id: children[0].id,
+          }),
+        ),
+      ).rejects.toThrow("Parent task not found");
+      await gateway.update(first.id, { deleted_at: null });
+      expect((await gateway.list()).tasks).toHaveLength(1003);
+      const input = taskDeletionSchema.parse({
+        ids: [first.id],
+        from_status: "todo",
+        parent_id: null,
+        deleted_at: deletionTime,
+        restore: false,
+      });
+      const saved = await gateway.remove(input);
+      expect(saved).toHaveLength(1002);
+      expect(parseDeletedTasks(saved, input)).toHaveLength(1002);
+      expect(await gateway.remove({ ...input, restore: true })).toHaveLength(
+        1002,
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("accepts 500 unique tasks and rejects empty, oversized, and duplicate selections", () => {
     const ids = Array.from({ length: 500 }, () => crypto.randomUUID());
     const deletion = {
@@ -109,7 +289,7 @@ describe("batch status moves", () => {
     try {
       const gateway = createGateway("local");
       await gateway.remove(deletion);
-      expect((await gateway.list()).tasks).toEqual([child]);
+      expect((await gateway.list()).tasks).toEqual([]);
       expect(setItem).toHaveBeenCalledOnce();
       const before = stored;
       await expect(

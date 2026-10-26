@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { applyTaskPatch, STATUSES, taskSchema, type Task } from "./task";
+import {
+  applyTaskPatch,
+  STATUSES,
+  taskSchema,
+  validateTaskParent,
+  type Task,
+} from "./task";
 
 export const MAX_BATCH_TASKS = 500;
 const batchScopeSchema = z
@@ -30,29 +36,81 @@ export const taskDeletionSchema = batchScopeSchema.extend({
 export type TaskDeletion = z.infer<typeof taskDeletionSchema>;
 export const taskBatchSchema = z.union([taskMoveSchema, taskDeletionSchema]);
 
-export function applyTaskDeletion(tasks: Task[], input: TaskDeletion): Task[] {
+function indexChildren(tasks: Task[]): Map<string, Task[]> {
+  const children = new Map<string, Task[]>();
+  for (const task of tasks) {
+    if (!task.parent_id) continue;
+    const siblings = children.get(task.parent_id) ?? [];
+    siblings.push(task);
+    children.set(task.parent_id, siblings);
+  }
+  return children;
+}
+
+// Upgrade browser data written before deletion included descendants.
+export function repairDeletedTaskTrees(tasks: Task[]): Task[] {
+  const children = indexChildren(tasks);
+  const changed = new Map<string, Task>();
+  const queue = tasks.filter((task) => !!task.deleted_at);
+  for (let index = 0; index < queue.length; index++)
+    for (const child of children.get(queue[index].id) ?? []) {
+      if (child.deleted_at || changed.has(child.id)) continue;
+      const deleted = applyTaskPatch(child, {
+        deleted_at: queue[index].deleted_at,
+      });
+      changed.set(child.id, deleted);
+      queue.push(deleted);
+    }
+  return changed.size
+    ? tasks.map((task) => changed.get(task.id) ?? task)
+    : tasks;
+}
+
+// Roots share one list scope; descendants can have any status and depth.
+export function taskDeletionTargets(
+  tasks: Task[],
+  input: TaskDeletion,
+): Task[] {
   const deletion = taskDeletionSchema.parse(input);
   const ids = new Set(deletion.ids);
-  const selected = tasks.filter((task) => ids.has(task.id));
+  const roots = tasks.filter((task) => ids.has(task.id));
+  const matches = (task: Task) =>
+    deletion.restore
+      ? !!task.deleted_at &&
+        Date.parse(task.deleted_at) === Date.parse(deletion.deleted_at)
+      : !task.deleted_at;
   if (
-    selected.length !== ids.size ||
-    selected.some(
+    roots.length !== ids.size ||
+    roots.some(
       (task) =>
         task.status !== deletion.from_status ||
         task.parent_id !== deletion.parent_id ||
-        (deletion.restore
-          ? !task.deleted_at ||
-            Date.parse(task.deleted_at) !== Date.parse(deletion.deleted_at)
-          : !!task.deleted_at),
+        !matches(task),
     )
   )
     throw new Error(
       "Selected tasks changed. Refresh your list and select them again.",
     );
+  if (deletion.restore)
+    for (const root of roots)
+      validateTaskParent(tasks, root.id, root.parent_id);
+  const children = indexChildren(tasks.filter(matches));
+  const targets = [...roots];
+  for (let index = 0; index < targets.length; index++)
+    for (const child of children.get(targets[index].id) ?? []) {
+      if (ids.has(child.id)) continue;
+      ids.add(child.id);
+      targets.push(child);
+    }
+  return targets;
+}
+
+export function applyTaskDeletion(tasks: Task[], input: TaskDeletion): Task[] {
+  const ids = new Set(taskDeletionTargets(tasks, input).map((task) => task.id));
   return tasks.map((task) =>
     ids.has(task.id)
       ? applyTaskPatch(task, {
-          deleted_at: deletion.restore ? null : deletion.deleted_at,
+          deleted_at: input.restore ? null : input.deleted_at,
         })
       : task,
   );
@@ -60,15 +118,26 @@ export function applyTaskDeletion(tasks: Task[], input: TaskDeletion): Task[] {
 
 export function parseDeletedTasks(value: unknown, input: TaskDeletion): Task[] {
   const tasks = taskSchema.array().parse(value);
-  const ids = new Set(input.ids);
+  const roots = new Set(input.ids);
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const reached = new Set(roots);
+  const queue = tasks.filter((task) => roots.has(task.id));
+  const children = indexChildren(tasks);
+  for (let index = 0; index < queue.length; index++)
+    for (const child of children.get(queue[index].id) ?? []) {
+      if (reached.has(child.id)) continue;
+      reached.add(child.id);
+      queue.push(child);
+    }
   if (
-    tasks.length !== ids.size ||
-    new Set(tasks.map((task) => task.id)).size !== ids.size ||
+    byId.size !== tasks.length ||
+    queue.length !== tasks.length ||
+    input.ids.some((id) => !byId.has(id)) ||
     tasks.some(
       (task) =>
-        !ids.has(task.id) ||
-        task.status !== input.from_status ||
-        task.parent_id !== input.parent_id ||
+        (roots.has(task.id) &&
+          (task.status !== input.from_status ||
+            task.parent_id !== input.parent_id)) ||
         (input.restore
           ? !!task.deleted_at
           : !task.deleted_at ||
