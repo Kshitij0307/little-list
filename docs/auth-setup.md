@@ -7,8 +7,9 @@ Cloud mode uses Google through Supabase Auth. Supabase handles Google identities
 - `/login` offers **Continue with Google** in the app's light/dark notebook style.
 - `/auth/callback` exchanges Supabase's single-use OAuth code for a cookie session. Redirects use the configured `APP_URL`, never a URL supplied by the visitor.
 - `src/proxy.ts` refreshes sessions before pages and API handlers run. Session cookies are HTTP-only because authentication runs entirely on the server.
-- The notebook layout verifies the user before rendering. Account changes remount the shared task provider; returning to an existing tab checks the account again. Sign-out removes the current browser session. Another device remains signed in.
-- The task repository verifies the session on each operation and uses that user's Supabase client. Unauthenticated task requests return `401`; expired sessions send the browser back to login.
+- The notebook layout verifies signed token claims before rendering. Account changes remount the shared task provider. Returning to an existing tab refreshes tasks once and compares the verified account ID in the response with the account already on screen. Sign-out removes the current browser session. Another device remains signed in.
+- The task repository verifies signed token claims on each operation and uses that account's Supabase client. Unauthenticated task requests return `401`; expired sessions send the browser back to login.
+- The cloud notebook layout loads initial tasks on the server using its verified session and passes them into the shared task provider. Home and task detail reloads render with that data; hydration does not fetch it again. Later refreshes still use the task API. An initial database failure shows an inline retry action, and local mode continues to read browser storage after mounting.
 - Tasks have a `user_id` referencing Supabase Auth users. Row Level Security allows authenticated users to select, insert, and update only their own tasks. Ownership cannot be changed by an authenticated client. Physical deletion is not granted; existing soft deletion and undo continue working.
 - A composite foreign key prevents a subtask from belonging to another user's parent task. Existing ancestry checks remain in place.
 - No separate profile table, external state library, or password database is needed.
@@ -97,14 +98,16 @@ Use separate browser profiles or a normal window plus a private window:
 2. Sign in as account B. Its notebook must be empty initially. Add a distinct task.
 3. In B's browser, open A's `/tasks/ID` URL. It should show not-found without A's task details.
 4. Attempts to update A's task ID as B should return `404`. Attempts to attach B's task to A's parent must fail. Anonymous `/api/tasks` requests should return `401`.
-5. Sign out, use Back, and switch between open tabs. Signed-out users should return to login; switching accounts should discard the previous account's in-memory notebook.
+5. Sign out, use Back, and switch between open tabs. Signed-out users should return to login on the next task request; switching accounts should discard the previous account's in-memory notebook when the task refresh completes.
 6. Sign in as A on phone and laptop. Both should load A's same cloud notebook. The app refreshes when returning to a tab; it does not implement live collaboration/push updates.
 
 Automated tests cover session verification, callback errors, owner-scoped queries, input validation, and existing task behavior. They do not replace testing actual Google credentials and deployed database policies with two real accounts.
 
 ## Security model and limits
 
-The UI asks for login, the API verifies the session, and Postgres independently enforces ownership through RLS. Application query filters provide an additional safeguard. A publishable key identifies the Supabase project; it does not grant access to another user's rows. Supabase project administrators retain administrative access; this is account privacy, not end-to-end encryption.
+The UI asks for login, the API verifies signed token claims, and Postgres independently enforces ownership through RLS. Application query filters provide an additional safeguard. A publishable key identifies the Supabase project; it does not grant access to another user's rows. Supabase project administrators retain administrative access; this is account privacy, not end-to-end encryption. Token verification checks signature and expiry; a session revoked remotely may remain usable until its current access token expires.
+
+`getClaims()` normally verifies tokens locally using cached public keys when the Supabase project uses asymmetric signing keys. Projects using a legacy symmetric signing key still require an Auth network call. Returning to a tab keeps its existing notebook visible while tasks refresh; a changed account ID clears that state and reloads the notebook for the current account.
 
 Keep authenticated responses private and uncached. Do not use shared response caching for task lists, sessions, or OAuth callbacks. Do not reintroduce service-role clients into normal user requests.
 

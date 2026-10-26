@@ -12,53 +12,87 @@ import {
 } from "../domain/task";
 
 type UndoAction = { id: string; patch: TaskPatch; label: string };
+export type InitialTaskState = { tasks: Task[] } | { error: string };
 const errorMessage = (value: unknown) =>
   value instanceof Error ? value.message : "Could not save. Please try again.";
 
-export function useTasks(mode: StorageMode) {
+export function useTasks(
+  mode: StorageMode,
+  userId?: string,
+  initialState?: InitialTaskState,
+) {
+  if (mode === "cloud" && !userId)
+    throw new Error("Cloud tasks require a verified user ID.");
   const gateway = useMemo(() => createGateway(mode), [mode]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState<Task[]>(
+    initialState && "tasks" in initialState ? initialState.tasks : [],
+  );
+  const [loading, setLoading] = useState(!initialState);
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    initialState && "error" in initialState ? initialState.error : null,
+  );
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
   const lock = useRef(false);
-  const loaded = useRef(false);
+  const loaded = useRef(!!initialState && "tasks" in initialState);
+  const lastReturnRefreshAt = useRef(0);
 
   const reload = useCallback(async () => {
     if (lock.current) return;
     lock.current = true;
     if (loaded.current) setRefreshing(true);
     else setLoading(true);
+    let switchingAccount = false;
     try {
-      setTasks(await gateway.list());
+      const result = await gateway.list();
+      if (mode === "cloud" && result.userId !== userId) {
+        switchingAccount = true;
+        setTasks([]);
+        setUndoAction(null);
+        setLoading(true);
+        location.replace("/");
+        return;
+      }
+      setTasks(result.tasks);
       loaded.current = true;
       setError(null);
     } catch (failure) {
       setError(errorMessage(failure));
     } finally {
       lock.current = false;
-      setLoading(false);
+      if (!switchingAccount) setLoading(false);
       setRefreshing(false);
     }
-  }, [gateway]);
+  }, [gateway, mode, userId]);
 
   useEffect(() => {
-    const timer = setTimeout(() => void reload(), 0);
-    const refresh = () => {
-      if (document.visibilityState === "visible") void reload();
+    const timer = setTimeout(() => {
+      lastReturnRefreshAt.current = Date.now();
+      if (!initialState) void reload();
+    }, 0);
+    const refreshOnReturn = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastReturnRefreshAt.current < 1_000) return;
+      lastReturnRefreshAt.current = now;
+      void reload();
     };
-    window.addEventListener("focus", refresh);
-    window.addEventListener("storage", refresh);
-    document.addEventListener("visibilitychange", refresh);
+    const restored = (event: PageTransitionEvent) => {
+      if (event.persisted) refreshOnReturn();
+    };
+    window.addEventListener("focus", refreshOnReturn);
+    window.addEventListener("pageshow", restored);
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    if (mode === "local") window.addEventListener("storage", reload);
     return () => {
       clearTimeout(timer);
-      window.removeEventListener("focus", refresh);
-      window.removeEventListener("storage", refresh);
-      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refreshOnReturn);
+      window.removeEventListener("pageshow", restored);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+      if (mode === "local") window.removeEventListener("storage", reload);
     };
-  }, [reload]);
+  }, [mode, reload, initialState]);
 
   // Both writes share locking, error reporting, rollback, and undo bookkeeping.
   // Overlapping writes are rejected; this is deliberately not a mutation queue.

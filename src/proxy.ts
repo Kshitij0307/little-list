@@ -33,7 +33,6 @@ export const config = {
     "/",
     "/tasks/:path*",
     "/api/tasks/:path*",
-    "/api/auth/:path*",
     "/login",
     "/auth/:path*",
   ],

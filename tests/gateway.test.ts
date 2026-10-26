@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createGateway } from "../src/features/tasks/client/task-gateway";
-import { createTaskSchema } from "../src/features/tasks/domain/task";
+import { createTaskSchema, makeTask } from "../src/features/tasks/domain/task";
 
 const input = createTaskSchema.parse({
   id: "be7f3440-3868-4e48-90fb-f2e8dbce5b26",
@@ -21,11 +21,11 @@ describe("storage adapters", () => {
     const gateway = createGateway("local");
     await gateway.create(input);
     const reopened = createGateway("local");
-    expect(await reopened.list()).toHaveLength(1);
+    expect((await reopened.list()).tasks).toHaveLength(1);
     await reopened.update(input.id, { deleted_at: new Date().toISOString() });
-    expect(await gateway.list()).toHaveLength(0);
+    expect((await gateway.list()).tasks).toHaveLength(0);
     await gateway.update(input.id, { deleted_at: null });
-    expect((await reopened.list())[0].title).toBe(input.title);
+    expect((await reopened.list()).tasks[0].title).toBe(input.title);
   });
   it("leaves corrupt stored data untouched instead of replacing it with an empty list", async () => {
     values.set("little-list.tasks.v1", "not-json");
@@ -60,6 +60,41 @@ describe("storage adapters", () => {
     );
     expect(values.size).toBe(0);
   });
+  it("reads the verified account ID alongside cloud tasks", async () => {
+    const task = makeTask(input);
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          Response.json({ userId: "verified-owner", tasks: [task] }),
+        ),
+    );
+    expect(await createGateway("cloud").list()).toEqual({
+      userId: "verified-owner",
+      tasks: [task],
+    });
+    expect(fetch).toHaveBeenCalledWith("/api/tasks", {
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+    });
+  });
+  it("returns to login when a task request has no valid session", async () => {
+    const replace = vi.fn();
+    vi.stubGlobal("window", { location: { replace } });
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          Response.json({ error: "Sign in" }, { status: 401 }),
+        ),
+    );
+    await expect(createGateway("cloud").list()).rejects.toThrow(
+      "session expired",
+    );
+    expect(replace).toHaveBeenCalledWith("/login");
+  });
 });
 
 describe("subtask persistence", () => {
@@ -73,7 +108,7 @@ describe("subtask persistence", () => {
     const gateway = createGateway("local");
     await gateway.create(input);
     await gateway.create({ ...childInput, parent_id: input.id });
-    expect(await createGateway("local").list()).toEqual(
+    expect((await createGateway("local").list()).tasks).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: childInput.id, parent_id: input.id }),
       ]),
@@ -108,7 +143,8 @@ describe("subtask persistence", () => {
       gateway.update(input.id, { parent_id: childInput.id }),
     ).rejects.toThrow("own subtask");
     expect(
-      (await gateway.list()).find((item) => item.id === input.id)?.parent_id,
+      (await gateway.list()).tasks.find((item) => item.id === input.id)
+        ?.parent_id,
     ).toBeNull();
     await gateway.update(input.id, { deleted_at: new Date().toISOString() });
     await expect(
@@ -119,7 +155,7 @@ describe("subtask persistence", () => {
       }),
     ).rejects.toThrow("Parent task not found");
     await gateway.update(input.id, { deleted_at: null });
-    expect(await gateway.list()).toHaveLength(2);
+    expect((await gateway.list()).tasks).toHaveLength(2);
   });
   it("reads older saved tasks as main-list tasks", async () => {
     const gateway = createGateway("local");
@@ -127,6 +163,6 @@ describe("subtask persistence", () => {
     const oldTasks = JSON.parse(values.get("little-list.tasks.v1")!);
     delete oldTasks[0].parent_id;
     values.set("little-list.tasks.v1", JSON.stringify(oldTasks));
-    expect((await gateway.list())[0].parent_id).toBeNull();
+    expect((await gateway.list()).tasks[0].parent_id).toBeNull();
   });
 });

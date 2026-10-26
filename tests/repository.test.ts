@@ -75,7 +75,9 @@ describe("private server storage", () => {
       error: null,
     });
     mocks.range.mockResolvedValueOnce({ data: [task], error: null });
-    expect(await listTasks()).toHaveLength(501);
+    const result = await listTasks();
+    expect(result.userId).toBe(owner);
+    expect(result.tasks).toHaveLength(501);
     expect(mocks.eq).toHaveBeenCalledWith("user_id", owner);
     expect(mocks.range).toHaveBeenNthCalledWith(1, 0, 499);
     expect(mocks.range).toHaveBeenNthCalledWith(2, 500, 999);
@@ -90,6 +92,14 @@ describe("private server storage", () => {
       error: { message: "Offline" },
     });
     await expect(listTasks()).rejects.toThrow("Unable to load tasks");
+  });
+  it("reuses a server-verified session when loading the initial notebook", async () => {
+    const session = await mocks.session();
+    mocks.session.mockClear();
+    mocks.range.mockResolvedValue({ data: [task], error: null });
+    expect(await listTasks(session)).toEqual({ userId: owner, tasks: [task] });
+    expect(mocks.session).not.toHaveBeenCalled();
+    expect(mocks.eq).toHaveBeenCalledWith("user_id", owner);
   });
   it("assigns ownership from the verified session", async () => {
     mocks.single.mockResolvedValue({ data: task, error: null });

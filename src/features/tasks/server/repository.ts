@@ -12,8 +12,10 @@ import {
 
 export class TaskRepositoryError extends Error {}
 
-export async function listTasks() {
-  const { client, user } = await requireTaskSession();
+export async function listTasks(
+  session?: Awaited<ReturnType<typeof requireTaskSession>>,
+) {
+  const { client, user } = session ?? (await requireTaskSession());
   const tasks: Task[] = [];
   const pageSize = 500;
   // Supabase caps individual responses; page through so older tasks remain visible.
@@ -29,7 +31,7 @@ export async function listTasks() {
     if (error) throw new TaskRepositoryError("Unable to load tasks.");
     const page = taskSchema.array().parse(data);
     tasks.push(...page);
-    if (page.length < pageSize) return tasks;
+    if (page.length < pageSize) return { userId: user.id, tasks };
   }
 }
 

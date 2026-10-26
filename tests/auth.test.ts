@@ -8,17 +8,20 @@ import {
 import { appOrigin } from "../src/lib/supabase/config";
 import { GET as callback } from "../src/app/auth/callback/route";
 import { errorResponse } from "../src/features/tasks/server/http";
-import { GET as sessionStatus } from "../src/app/api/auth/session/route";
 import {
   AuthApiError,
+  AuthInvalidJwtError,
   AuthRetryableFetchError,
   AuthSessionMissingError,
 } from "@supabase/supabase-js";
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), exchange: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getClaims: vi.fn(), exchange: vi.fn() }));
 vi.mock("../src/lib/supabase/server", () => ({
   createSupabaseServerClient: async () => ({
-    auth: { getUser: mocks.getUser, exchangeCodeForSession: mocks.exchange },
+    auth: {
+      getClaims: mocks.getClaims,
+      exchangeCodeForSession: mocks.exchange,
+    },
   }),
 }));
 beforeEach(() => {
@@ -31,14 +34,15 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("authentication boundary", () => {
-  it("requires an Auth-verified user and rejects failed verification", async () => {
-    mocks.getUser.mockResolvedValue({
-      data: { user: { id: "verified-owner" } },
+  it("uses only verified signed claims for the task owner", async () => {
+    mocks.getClaims.mockResolvedValue({
+      data: { claims: { sub: "verified-owner", email: "owner@example.com" } },
       error: null,
     });
     expect((await requireTaskSession()).user.id).toBe("verified-owner");
-    mocks.getUser.mockResolvedValue({
-      data: { user: { id: "untrusted" } },
+    expect((await currentSession())?.user.email).toBe("owner@example.com");
+    mocks.getClaims.mockResolvedValue({
+      data: { claims: { sub: "untrusted" } },
       error: new AuthApiError("Invalid token", 401, "bad_jwt"),
     });
     expect(await currentSession()).toBeNull();
@@ -46,19 +50,29 @@ describe("authentication boundary", () => {
       AuthenticationRequiredError,
     );
   });
-  it("recognizes missing and revoked sessions without trusting returned user data", async () => {
+  it("rejects missing, expired and invalid sessions without trusting returned claims", async () => {
     for (const error of [
       new AuthSessionMissingError(),
-      new AuthApiError("Revoked session", 400, "session_not_found"),
+      new AuthInvalidJwtError("JWT has expired"),
+      new AuthInvalidJwtError("Invalid JWT signature"),
+      new AuthApiError("Invalid token", 401, "bad_jwt"),
     ]) {
-      mocks.getUser.mockResolvedValue({
-        data: { user: { id: "untrusted" } },
+      mocks.getClaims.mockResolvedValue({
+        data: { claims: { sub: "untrusted" } },
         error,
       });
-      const response = await sessionStatus();
-      expect(await response.json()).toEqual({ userId: null });
-      expect(response.headers.get("cache-control")).toBe("private, no-store");
+      expect(await currentSession()).toBeNull();
+      await expect(requireTaskSession()).rejects.toBeInstanceOf(
+        AuthenticationRequiredError,
+      );
     }
+  });
+  it("rejects a missing token without opening a task session", async () => {
+    mocks.getClaims.mockResolvedValue({ data: null, error: null });
+    expect(await currentSession()).toBeNull();
+    await expect(requireTaskSession()).rejects.toBeInstanceOf(
+      AuthenticationRequiredError,
+    );
   });
   it.each([
     new AuthRetryableFetchError("Sensitive upstream detail", 503),
@@ -66,23 +80,17 @@ describe("authentication boundary", () => {
   ])(
     "reports unavailable verification separately from sign-out",
     async (error) => {
-      mocks.getUser.mockResolvedValue({ data: { user: null }, error });
+      mocks.getClaims.mockResolvedValue({ data: null, error });
       await expect(requireTaskSession()).rejects.toBeInstanceOf(
         AuthenticationUnavailableError,
       );
-      const response = await sessionStatus();
-      expect(response.status).toBe(503);
-      expect(response.headers.get("cache-control")).toBe("private, no-store");
-      expect(await response.json()).toEqual({
-        error: "We couldn’t verify your session. Please try again.",
-      });
       expect(errorResponse(new AuthenticationUnavailableError()).status).toBe(
         503,
       );
     },
   );
   it("handles a rejected Auth request without reporting a missing session", async () => {
-    mocks.getUser.mockRejectedValue(new TypeError("Failed to fetch"));
+    mocks.getClaims.mockRejectedValue(new TypeError("Failed to fetch"));
     await expect(currentSession()).rejects.toBeInstanceOf(
       AuthenticationUnavailableError,
     );
@@ -92,7 +100,7 @@ describe("authentication boundary", () => {
     await expect(requireTaskSession()).rejects.toBeInstanceOf(
       AuthenticationRequiredError,
     );
-    expect(mocks.getUser).not.toHaveBeenCalled();
+    expect(mocks.getClaims).not.toHaveBeenCalled();
   });
   it("returns a non-cacheable 401 for missing sessions", async () => {
     const response = errorResponse(new AuthenticationRequiredError());

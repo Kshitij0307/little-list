@@ -10,7 +10,7 @@ import {
 
 export type StorageMode = "local" | "cloud";
 export interface TaskGateway {
-  list(): Promise<Task[]>;
+  list(): Promise<{ userId: string | null; tasks: Task[] }>;
   create(input: CreateTask): Promise<Task>;
   update(id: string, input: TaskPatch): Promise<Task>;
 }
@@ -58,7 +58,21 @@ async function request(path: string, options?: RequestInit): Promise<unknown> {
 export function createGateway(mode: StorageMode): TaskGateway {
   if (mode === "cloud")
     return {
-      list: async () => taskSchema.array().parse(await request("/api/tasks")),
+      list: async () => {
+        const result = await request("/api/tasks");
+        if (
+          !result ||
+          typeof result !== "object" ||
+          !("userId" in result) ||
+          typeof result.userId !== "string" ||
+          !("tasks" in result)
+        )
+          throw new Error("Invalid task list response.");
+        return {
+          userId: result.userId,
+          tasks: taskSchema.array().parse(result.tasks),
+        };
+      },
       create: async (input) =>
         taskSchema.parse(
           await request("/api/tasks", {
@@ -75,7 +89,10 @@ export function createGateway(mode: StorageMode): TaskGateway {
         ),
     };
   return {
-    list: async () => readLocal().filter((task) => !task.deleted_at),
+    list: async () => ({
+      userId: null,
+      tasks: readLocal().filter((task) => !task.deleted_at),
+    }),
     create: async (input) => {
       const tasks = readLocal();
       const task = makeTask(input);

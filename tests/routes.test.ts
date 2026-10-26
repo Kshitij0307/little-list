@@ -36,10 +36,16 @@ beforeEach(() => vi.resetAllMocks());
 
 describe("task API", () => {
   it("returns an uncached list", async () => {
-    vi.mocked(listTasks).mockResolvedValue([task]);
+    vi.mocked(listTasks).mockResolvedValue({
+      userId: "verified-owner",
+      tasks: [task],
+    });
     const response = await GET();
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(await response.json()).toEqual([task]);
+    expect(await response.json()).toEqual({
+      userId: "verified-owner",
+      tasks: [task],
+    });
   });
   it("validates before persisting a new task", async () => {
     expect((await POST(request({ id: input.id, title: " " }))).status).toBe(
