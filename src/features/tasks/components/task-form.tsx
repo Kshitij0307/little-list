@@ -1,7 +1,7 @@
 "use client";
 import formStyles from "./task-form.module.css";
 import fieldsStyles from "@/components/ui/fields.module.css";
-import { CalendarDays, ExternalLink, Star, Sun } from "lucide-react";
+import { CalendarDays, ExternalLink, Star, Sun, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChoiceMenu } from "@/components/ui/choice-menu";
 import {
@@ -16,10 +16,12 @@ export function TaskForm({
   task,
   busy,
   onSave,
+  onMoveToMainList,
 }: {
   task: Task;
   busy: boolean;
   onSave(patch: TaskPatch): Promise<boolean>;
+  onMoveToMainList?(): Promise<boolean>;
 }) {
   const { values, change, save, dirty, validationError, saved } = useTaskForm(
     task,
@@ -130,15 +132,33 @@ export function TaskForm({
           />
           <Star size={15} /> Important
         </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={values.focus_today}
-            onChange={(event) => change("focus_today", event.target.checked)}
-            disabled={busy}
-          />
-          <Sun size={15} /> Focus today
-        </label>
+        <div className={formStyles["focus-actions"]}>
+          <label>
+            <input
+              type="checkbox"
+              checked={values.focus_today}
+              onChange={(event) => change("focus_today", event.target.checked)}
+              disabled={busy}
+            />
+            <Sun size={15} /> Focus today
+          </label>
+          {onMoveToMainList && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className={formStyles["move-main-button"]}
+              aria-label="Move to main list"
+              disabled={busy}
+              onClick={() => void onMoveToMainList()}
+            >
+              <Unlink size={15} />
+              <span className={formStyles["move-main-label"]}>
+                Move to main list
+              </span>
+            </Button>
+          )}
+        </div>
       </div>
       {validationError && (
         <p className={fieldsStyles["form-error"]} role="alert">

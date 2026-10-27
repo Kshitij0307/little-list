@@ -201,16 +201,6 @@ export function SelectableTaskList({
               busy={busy}
               onEdit={() => onOpenTask(task.id)}
               onUpdate={(patch, label) => void update(task.id, patch, label)}
-              onDetach={
-                parentId
-                  ? () =>
-                      void update(
-                        task.id,
-                        { parent_id: null },
-                        "Subtask moved to main list",
-                      )
-                  : undefined
-              }
               selection={
                 active
                   ? {

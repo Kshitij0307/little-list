@@ -143,6 +143,41 @@ describe("shared task controls", () => {
     expect(onEdit).toHaveBeenCalledOnce();
   });
 
+  it("keeps task content and row actions in separate layout sections", () => {
+    const { container } = render(
+      <ul>
+        <TaskRow
+          task={{
+            ...task,
+            title: "A task title long enough to need truncation",
+            notes: "Notes also stay inside the flexible content section",
+          }}
+          busy={false}
+          onEdit={vi.fn()}
+          onUpdate={vi.fn()}
+        />
+      </ul>,
+    );
+    const primary = container.querySelector("[data-task-primary]");
+    const actions = container.querySelector("[data-task-actions]");
+    expect(primary).toBeTruthy();
+    expect(actions).toBeTruthy();
+    expect(
+      primary?.contains(
+        screen.getByRole("button", {
+          name: "Edit A task title long enough to need truncation",
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      actions?.contains(
+        screen.getByRole("button", {
+          name: "Star A task title long enough to need truncation",
+        }),
+      ),
+    ).toBe(true);
+  });
+
   it.each(["todo", "done"] as const)(
     "disables every %s row action during a save",
     (status) => {

@@ -162,6 +162,26 @@ it("sends an explicit null when clearing an existing due date", async () => {
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({ due_date: null }));
 });
 
+it("shows the move-to-main-list action only when it is available", () => {
+  const onSave = vi.fn();
+  const onMoveToMainList = vi.fn().mockResolvedValue(true);
+  const view = render(<TaskForm task={task} busy={false} onSave={onSave} />);
+  expect(
+    screen.queryByRole("button", { name: "Move to main list" }),
+  ).toBeNull();
+
+  view.rerender(
+    <TaskForm
+      task={task}
+      busy={false}
+      onSave={onSave}
+      onMoveToMainList={onMoveToMainList}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Move to main list" }));
+  expect(onMoveToMainList).toHaveBeenCalledOnce();
+});
+
 describe("saved task links", () => {
   const link = "https://www.instagram.com/reel/example/";
   it("saves a link with context and exposes the saved URL in a new tab", async () => {

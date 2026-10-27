@@ -1,13 +1,22 @@
 .task-row {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 0;
   min-height: 68px;
   border-bottom: 1px solid var(--line);
   animation: appear 0.2s ease-out;
 }
 .task-row:last-child {
   border-bottom: 0;
+}
+.task-primary {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 .task-check {
   flex-shrink: 0;
@@ -57,7 +66,7 @@
   align-self: stretch;
   justify-content: center;
   min-height: 68px;
-  padding: 16px 6px;
+  padding: 10px 2px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -69,9 +78,15 @@
   background: var(--surface-alt);
 }
 .task-title {
+  display: -webkit-box;
+  width: 100%;
   font-size: var(--text-body);
   line-height: 1.45;
+  overflow: hidden;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 .task-done .task-title {
   color: var(--muted);
@@ -91,6 +106,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  max-width: 100%;
+  overflow: hidden;
   color: var(--accent);
   font-size: 10px;
 }
@@ -109,8 +126,8 @@
 .task-actions {
   display: flex;
   align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
+  gap: 0;
+  flex: 0 0 auto;
 }
 .star-button {
   color: var(--subtle);
@@ -119,7 +136,8 @@
   color: var(--gold);
 }
 .advance-button {
-  min-width: 75px;
+  min-width: 68px;
+  padding-inline: 9px;
 }
 @keyframes appear {
   from {
@@ -130,34 +148,17 @@
   }
 }
 @media (max-width: 700px) {
-  .task-row {
-    gap: 9px;
-  }
-  .task-actions {
-    gap: 1px;
+  .task-primary {
+    gap: 2px;
   }
 }
 @media (max-width: 480px) {
-  .task-row {
-    display: grid;
-    grid-template-columns: 44px minmax(0, 1fr);
-    column-gap: 9px;
-    row-gap: 7px;
-    padding: 15px 0;
-    align-items: start;
-  }
   .task-copy {
-    min-height: 44px;
-    padding: 8px 6px;
+    min-height: 68px;
+    padding: 8px 1px;
   }
   .task-title {
     font-size: var(--text-body);
-  }
-  .task-actions {
-    grid-column: 2;
-    justify-content: flex-end;
-    margin-top: 1px;
-    gap: 5px;
   }
   .task-actions button {
     min-height: 44px;
@@ -167,5 +168,15 @@
   }
   .task-note {
     font-size: var(--text-small);
+  }
+}
+@media (max-width: 360px) {
+  .advance-button {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+  }
+  .advance-label {
+    display: none;
   }
 }

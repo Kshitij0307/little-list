@@ -74,6 +74,16 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           task={task}
           busy={busy}
           onSave={(patch) => update(task.id, patch)}
+          onMoveToMainList={
+            task.parent_id
+              ? () =>
+                  update(
+                    task.id,
+                    { parent_id: null },
+                    "Subtask moved to main list",
+                  )
+              : undefined
+          }
         />
         <SubtaskSection
           key={`subtasks-${task.id}`}

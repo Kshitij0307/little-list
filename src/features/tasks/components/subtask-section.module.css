@@ -37,6 +37,10 @@
   min-width: 0;
   flex: 1;
 }
+.subtask-input-row > button[type="submit"] {
+  flex: 0 0 auto;
+  min-width: 72px;
+}
 ul.subtask-list {
   padding: 0;
 }
@@ -62,11 +66,8 @@ ul.subtask-list {
 .subtask-panel {
   min-height: 170px;
 }
-.subtask-panel [data-task-row] {
-  gap: 8px;
-}
 .subtask-panel [data-task-actions] {
-  gap: 1px;
+  gap: 0;
 }
 .subtask-panel [data-advance] {
   min-width: 68px;
@@ -92,18 +93,19 @@ ul.subtask-list {
 }
 @media (max-width: 480px) {
   .subtask-input-row {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .subtask-input-row > button[type="submit"] {
-    align-self: flex-end;
+    gap: 6px;
   }
   .subtask-controls [role="tab"] {
     font-size: var(--text-caption);
     gap: 4px;
     padding-inline: 4px;
   }
-  .subtask-panel [data-task-row] {
-    display: grid;
+  .subtask-panel [data-advance] {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+  }
+  .subtask-panel [data-advance-label] {
+    display: none;
   }
 }

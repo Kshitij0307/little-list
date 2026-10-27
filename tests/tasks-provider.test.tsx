@@ -109,6 +109,35 @@ it("includes the requested task in server-rendered HTML", () => {
   expect(gateway.list).not.toHaveBeenCalled();
 });
 
+it("moves an open subtask to the main list from its detail form", async () => {
+  const child = {
+    ...task,
+    id: "d2e80888-53ec-419d-aea0-54beb67d77b3",
+    parent_id: task.id,
+    title: "A smaller step",
+  };
+  gateway.update.mockResolvedValue({ ...child, parent_id: null });
+  render(
+    <TasksProvider
+      mode="cloud"
+      userId="owner-a"
+      initialState={{ tasks: [task, child] }}
+    >
+      <TaskDetail taskId={child.id} />
+    </TasksProvider>,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Move to main list" }));
+
+  await waitFor(() =>
+    expect(gateway.update).toHaveBeenCalledWith(child.id, { parent_id: null }),
+  );
+  expect(
+    screen.queryByRole("button", { name: "Move to main list" }),
+  ).toBeNull();
+  expect(screen.getByRole("heading", { name: child.title })).toBeTruthy();
+});
+
 it("uses server tasks immediately without a mount fetch and supports editing and undo", async () => {
   gateway.update
     .mockResolvedValueOnce({ ...task, title: "Edited title" })
@@ -248,6 +277,17 @@ it("keeps subtask counts and sorted status rows scoped to the current parent", a
     </TasksProvider>,
   );
   await screen.findByRole("tab", { name: "Todo 2" });
+  const addButtons = screen.getAllByRole("button", { name: "Add" });
+  expect(
+    screen
+      .getByLabelText("Add a smaller step as its subtask")
+      .parentElement?.contains(addButtons[0]),
+  ).toBe(true);
+  expect(
+    screen
+      .getByLabelText("Add an existing main-list task as its subtask")
+      .parentElement?.contains(addButtons[1]),
+  ).toBe(true);
   expect(screen.getByText("1/3 done")).toBeTruthy();
   const panel = screen.getByRole("tabpanel");
   const rows = within(panel).getAllByRole("listitem");

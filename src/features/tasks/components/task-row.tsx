@@ -14,7 +14,6 @@ import {
   Star,
   Sun,
   Trash2,
-  Unlink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -31,14 +30,12 @@ export function TaskRow({
   busy,
   onEdit,
   onUpdate,
-  onDetach,
   selection,
 }: {
   task: Task;
   busy: boolean;
   onEdit(): void;
   onUpdate(patch: TaskPatch, label?: string): void;
-  onDetach?(): void;
   selection?: { selected: boolean; disabled?: boolean; toggle(): void };
 }) {
   const done = task.status === "done";
@@ -61,68 +58,70 @@ export function TaskRow({
         selection?.selected && rowStyles["task-selected"],
       )}
     >
-      <button
-        className={rowStyles["task-check"]}
-        role={selection ? "checkbox" : undefined}
-        aria-checked={selection ? selection.selected : undefined}
-        aria-label={
-          selection
-            ? `Select ${task.title}`
-            : done
-              ? `Reopen ${task.title}`
-              : `Complete ${task.title}`
-        }
-        disabled={busy || selection?.disabled}
-        onClick={() =>
-          selection
-            ? selection.toggle()
-            : onUpdate(
-                { status: done ? "todo" : "done" },
-                done ? "Task reopened" : "Task completed",
-              )
-        }
-      >
-        <span className={rowStyles["check-icon"]} aria-hidden="true">
-          {(selection ? selection.selected : done) ? (
-            <Check size={18} strokeWidth={2.2} />
-          ) : (
-            <Circle size={22} strokeWidth={1.3} />
-          )}
-        </span>
-      </button>
-      <button
-        className={rowStyles["task-copy"]}
-        onClick={() => (selection ? selection.toggle() : onEdit())}
-        disabled={busy || selection?.disabled}
-        aria-pressed={selection ? selection.selected : undefined}
-        aria-label={selection ? `Select ${task.title}` : `Edit ${task.title}`}
-      >
-        <span className={rowStyles["task-title"]}>{task.title}</span>
-        {task.notes && (
-          <span className={rowStyles["task-note"]}>{task.notes}</span>
-        )}
-        {(dateLabel || task.focus_today) && (
-          <span className={rowStyles["task-meta"]}>
-            {dateLabel && (
-              <span
-                className={cn(
-                  rowStyles["date-badge"],
-                  overdue && rowStyles["overdue"],
-                )}
-              >
-                <CalendarDays size={12} />
-                {overdue ? "Overdue · " : ""}
-                {dateLabel}
-              </span>
-            )}
-            {task.focus_today && !done && (
-              <span>
-                <Sun size={12} /> Today’s focus
-              </span>
+      <div data-task-primary className={rowStyles["task-primary"]}>
+        <button
+          className={rowStyles["task-check"]}
+          role={selection ? "checkbox" : undefined}
+          aria-checked={selection ? selection.selected : undefined}
+          aria-label={
+            selection
+              ? `Select ${task.title}`
+              : done
+                ? `Reopen ${task.title}`
+                : `Complete ${task.title}`
+          }
+          disabled={busy || selection?.disabled}
+          onClick={() =>
+            selection
+              ? selection.toggle()
+              : onUpdate(
+                  { status: done ? "todo" : "done" },
+                  done ? "Task reopened" : "Task completed",
+                )
+          }
+        >
+          <span className={rowStyles["check-icon"]} aria-hidden="true">
+            {(selection ? selection.selected : done) ? (
+              <Check size={18} strokeWidth={2.2} />
+            ) : (
+              <Circle size={22} strokeWidth={1.3} />
             )}
           </span>
-        )}
-      </button>
+        </button>
+        <button
+          className={rowStyles["task-copy"]}
+          onClick={() => (selection ? selection.toggle() : onEdit())}
+          disabled={busy || selection?.disabled}
+          aria-pressed={selection ? selection.selected : undefined}
+          aria-label={selection ? `Select ${task.title}` : `Edit ${task.title}`}
+        >
+          <span className={rowStyles["task-title"]}>{task.title}</span>
+          {task.notes && (
+            <span className={rowStyles["task-note"]}>{task.notes}</span>
+          )}
+          {(dateLabel || task.focus_today) && (
+            <span className={rowStyles["task-meta"]}>
+              {dateLabel && (
+                <span
+                  className={cn(
+                    rowStyles["date-badge"],
+                    overdue && rowStyles["overdue"],
+                  )}
+                >
+                  <CalendarDays size={12} />
+                  {overdue ? "Overdue · " : ""}
+                  {dateLabel}
+                </span>
+              )}
+              {task.focus_today && !done && (
+                <span>
+                  <Sun size={12} /> Today’s focus
+                </span>
+              )}
+            </span>
+          )}
+        </button>
+      </div>
       {!selection && (
         <div data-task-actions className={rowStyles["task-actions"]}>
           <Button
@@ -152,6 +151,11 @@ export function TaskRow({
               size="sm"
               data-advance
               className={rowStyles["advance-button"]}
+              aria-label={
+                task.status === "todo"
+                  ? `Start ${task.title}`
+                  : `Finish ${task.title}`
+              }
               disabled={busy}
               onClick={() =>
                 onUpdate(
@@ -160,24 +164,14 @@ export function TaskRow({
                 )
               }
             >
-              {task.status === "todo" ? "Start" : "Finish"}
+              <span data-advance-label className={rowStyles["advance-label"]}>
+                {task.status === "todo" ? "Start" : "Finish"}
+              </span>
               {task.status === "todo" ? (
                 <ArrowRight size={14} />
               ) : (
                 <Check size={14} />
               )}
-            </Button>
-          )}
-          {onDetach && (
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={`Move ${task.title} to main list`}
-              title="Move to main list"
-              disabled={busy}
-              onClick={onDetach}
-            >
-              <Unlink size={16} />
             </Button>
           )}
           <DropdownMenu.Root>
