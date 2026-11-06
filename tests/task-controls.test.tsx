@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { TaskStatusTabs } from "../src/features/tasks/components/task-status-tabs";
 import { TaskPicker } from "../src/features/tasks/components/task-picker";
 import { TaskRow } from "../src/features/tasks/components/task-row";
@@ -144,6 +150,26 @@ describe("shared task controls", () => {
     expect(onEdit).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: `Edit ${task.title}` }));
     expect(onEdit).toHaveBeenCalledOnce();
+  });
+
+  it("copies the task title from the row action", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    render(
+      <ul>
+        <TaskRow task={task} busy={false} onEdit={vi.fn()} onUpdate={vi.fn()} />
+      </ul>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: `Copy ${task.title}` }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(task.title));
+    expect(
+      screen.getByRole("button", { name: "Task title copied" }),
+    ).toBeTruthy();
   });
 
   it("keeps task content and row actions in separate layout sections", () => {

@@ -2,13 +2,14 @@
 import rowStyles from "./task-row.module.css";
 import menuStyles from "@/components/ui/dropdown-menu.module.css";
 
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import type { CSSProperties } from "react";
 import {
   ArrowRight,
   CalendarDays,
   Check,
   Circle,
+  Copy,
   MoreHorizontal,
   Pencil,
   RotateCcw,
@@ -64,6 +65,8 @@ export function TaskRow({
   dropPosition?: "before" | "after";
   shiftDirection?: "up" | "down";
 }) {
+  const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const done = task.status === "done";
   const overdue = !!task.due_date && task.due_date < localDate() && !done;
   const dateLabel = task.due_date
@@ -74,6 +77,25 @@ export function TaskRow({
           day: "numeric",
         }).format(new Date(`${task.due_date}T12:00:00`))
     : null;
+  useEffect(
+    () => () => {
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+    },
+    [],
+  );
+  async function copyTitle() {
+    try {
+      await navigator.clipboard.writeText(task.title);
+      setCopied(true);
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => {
+        setCopied(false);
+        copyTimer.current = null;
+      }, 1400);
+    } catch {
+      setCopied(false);
+    }
+  }
   return (
     <li
       data-task-row
@@ -222,6 +244,16 @@ export function TaskRow({
               )}
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={copied ? "Task title copied" : `Copy ${task.title}`}
+            title={copied ? "Copied" : "Copy task title"}
+            disabled={busy}
+            onClick={() => void copyTitle()}
+          >
+            {copied ? <Check size={16} /> : <Copy size={16} />}
+          </Button>
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
               <Button
