@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Brand } from "@/components/brand";
 import paper from "@/components/ui/paper.module.css";
 import { NotebookStatus } from "@/components/notebook-status";
+import { NotebookNotice } from "@/components/notebook-notice";
 import { localDate, mainTasks } from "../domain/task";
 import { useTaskContext } from "../hooks/tasks-provider";
 export function TaskWorkspace({
@@ -38,7 +39,9 @@ export function TaskWorkspace({
     undo,
     dismissUndo,
   } = useTaskContext();
-  const isDetail = usePathname() !== "/";
+  const pathname = usePathname();
+  const isDetail = pathname !== "/";
+  const taskRouteId = pathname.match(/^\/tasks\/([^/]+)$/)?.[1];
   const [today, setToday] = useState("");
   useEffect(() => {
     const timer = setTimeout(
@@ -55,6 +58,21 @@ export function TaskWorkspace({
     return () => clearTimeout(timer);
   }, []);
   if (isDetail && loading) return <NotebookStatus />;
+  const missingTaskRoute =
+    !loading &&
+    !error &&
+    !!taskRouteId &&
+    !tasks.some((task) => task.id === taskRouteId && !task.deleted_at);
+  if (missingTaskRoute)
+    return (
+      <div className={workspaceStyles["standalone-state"]}>
+        <NotebookNotice
+          kind="not-found"
+          embedded
+          description="We couldn’t find this task in your notebook. Check the link, or head back to your notebook."
+        />
+      </div>
+    );
   const completedToday = mainTasks(tasks).filter(
     (task) =>
       task.completed_at &&

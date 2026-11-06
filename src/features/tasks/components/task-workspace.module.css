@@ -1,6 +1,12 @@
 .app-shell {
   min-height: 100svh;
 }
+.standalone-state {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 28px 20px;
+}
 .site-header {
   max-width: 1280px;
   margin: auto;

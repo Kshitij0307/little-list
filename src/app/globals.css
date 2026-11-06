@@ -111,6 +111,12 @@ select {
   color: var(--ink);
 }
 
+html.task-drag-lock,
+html.task-drag-lock * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 input::placeholder,
 textarea::placeholder {
   color: var(--subtle);

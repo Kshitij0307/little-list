@@ -138,6 +138,9 @@ it("requires a touch hold, lifts the task, and suppresses opening after release"
       clientY: 100,
     });
     expect(row.getAttribute("data-dragging")).toBeNull();
+    expect(document.documentElement.classList.contains("task-drag-lock")).toBe(
+      true,
+    );
     act(() => vi.advanceTimersByTime(360));
     expect(row.getAttribute("data-dragging")).toBe("true");
     fireEvent.pointerMove(body, {
@@ -156,6 +159,9 @@ it("requires a touch hold, lifts the task, and suppresses opening after release"
         ?.getAttribute("data-shift"),
     ).toBe("up");
     fireEvent.pointerUp(body, { pointerId: 7, pointerType: "touch" });
+    expect(document.documentElement.classList.contains("task-drag-lock")).toBe(
+      false,
+    );
     fireEvent.click(body);
     expect(navigation.push).not.toHaveBeenCalled();
   } finally {

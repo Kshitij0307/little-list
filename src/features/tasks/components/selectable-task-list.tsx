@@ -22,6 +22,19 @@ import type { TaskSelection } from "../hooks/use-task-selection";
 import { TaskRow } from "./task-row";
 import styles from "./selectable-task-list.module.css";
 
+let touchDragLockCount = 0;
+
+function lockTouchSelection() {
+  touchDragLockCount += 1;
+  document.documentElement.classList.add("task-drag-lock");
+}
+
+function unlockTouchSelection() {
+  touchDragLockCount = Math.max(0, touchDragLockCount - 1);
+  if (!touchDragLockCount)
+    document.documentElement.classList.remove("task-drag-lock");
+}
+
 export function TaskSelectionToggle({
   selection,
   disabled,
@@ -108,6 +121,7 @@ export function SelectableTaskList({
   useEffect(
     () => () => {
       if (drag.current?.timer) clearTimeout(drag.current.timer);
+      if (drag.current?.pointerType === "touch") unlockTouchSelection();
       if (settleTimer.current) clearTimeout(settleTimer.current);
     },
     [],
@@ -115,6 +129,7 @@ export function SelectableTaskList({
 
   function resetDrag() {
     if (drag.current?.timer) clearTimeout(drag.current.timer);
+    if (drag.current?.pointerType === "touch") unlockTouchSelection();
     drag.current = null;
     drop.current = null;
     setDraggingId(null);
@@ -455,6 +470,8 @@ export function SelectableTaskList({
                                 ? setTimeout(activate, 360)
                                 : null,
                           };
+                          if (event.pointerType === "touch")
+                            lockTouchSelection();
                           event.currentTarget.setPointerCapture(
                             event.pointerId,
                           );

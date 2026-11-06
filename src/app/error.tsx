@@ -1,11 +1,11 @@
 "use client";
 import { NotebookNotice } from "@/components/notebook-notice";
-import { PageShell } from "@/components/page-shell";
+import styles from "./error.module.css";
 
 export default function ErrorPage({ retry }: { retry(): void }) {
   return (
-    <PageShell>
+    <div className={styles.page}>
       <NotebookNotice kind="error" onRetry={retry} />
-    </PageShell>
+    </div>
   );
 }
