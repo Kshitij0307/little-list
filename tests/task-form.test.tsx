@@ -9,7 +9,11 @@ import {
   within,
 } from "@testing-library/react";
 import { TaskForm } from "../src/features/tasks/components/task-form";
-import { createTaskSchema, makeTask } from "../src/features/tasks/domain/task";
+import {
+  createTaskSchema,
+  localDate,
+  makeTask,
+} from "../src/features/tasks/domain/task";
 
 const task = makeTask(
   createTaskSchema.parse({
@@ -53,7 +57,13 @@ describe("task draft ownership", () => {
         onSave={onSave}
       />,
     );
-    await screen.findByText("Changes saved");
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Save changes",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
     // Undo updates the saved record; the clean draft must follow it.
     view.rerender(<TaskForm task={task} busy={false} onSave={onSave} />);
     expect((screen.getByLabelText("Task") as HTMLInputElement).value).toBe(
@@ -79,7 +89,6 @@ describe("task draft ownership", () => {
     expect((screen.getByLabelText("Task") as HTMLInputElement).value).toBe(
       "Keep this edit",
     );
-    expect(screen.queryByText("Changes saved")).toBeNull();
     expect(
       (
         screen.getByRole("button", {
@@ -156,11 +165,73 @@ it("sends an explicit null when clearing an existing due date", async () => {
       onSave={onSave}
     />,
   );
-  fireEvent.change(screen.getByLabelText("Due date"), {
-    target: { value: "" },
-  });
+  fireEvent.click(screen.getByRole("button", { name: "Due date" }));
+  expect(
+    screen.getByRole("dialog", { name: "Choose due date" }).parentElement,
+  ).toBe(document.body);
+  fireEvent.click(screen.getByRole("button", { name: "Clear date" }));
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({ due_date: null }));
+});
+
+it("selects a calendar date and saves it in the task date format", async () => {
+  const onSave = vi.fn().mockResolvedValue(true);
+  render(<TaskForm task={task} busy={false} onSave={onSave} />);
+  fireEvent.click(screen.getByRole("button", { name: "Due date" }));
+  fireEvent.click(screen.getByRole("button", { name: "Today" }));
+  expect(
+    screen.getByRole("button", { name: "Due date" }).textContent,
+  ).toContain(
+    new Intl.DateTimeFormat(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(new Date()),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith({ due_date: localDate() }),
+  );
+});
+
+it("keeps the calendar within its compressed details panel", () => {
+  const { container } = render(
+    <div data-overlay-boundary>
+      <TaskForm task={task} busy={false} onSave={vi.fn()} />
+    </div>,
+  );
+  const trigger = screen.getByRole("button", { name: "Due date" });
+  const panel = container.querySelector<HTMLElement>("[data-overlay-boundary]");
+  expect(panel).not.toBeNull();
+
+  vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue({
+    left: 100,
+    right: 500,
+    top: 400,
+    bottom: 444,
+    width: 400,
+    height: 44,
+    x: 100,
+    y: 400,
+    toJSON: () => ({}),
+  } as DOMRect);
+  vi.spyOn(panel!, "getBoundingClientRect").mockReturnValue({
+    left: 80,
+    right: 360,
+    top: 100,
+    bottom: 700,
+    width: 280,
+    height: 600,
+    x: 80,
+    y: 100,
+    toJSON: () => ({}),
+  } as DOMRect);
+
+  fireEvent.click(trigger);
+  const calendar = screen.getByRole("dialog", { name: "Choose due date" });
+  expect(calendar.parentElement).toBe(document.body);
+  expect((calendar as HTMLDivElement).style.left).toBe("100px");
+  expect((calendar as HTMLDivElement).style.width).toBe("248px");
 });
 
 it("keeps task options in one responsive group and shows move-to-main-list only when available", () => {
@@ -231,7 +302,13 @@ describe("saved task links", () => {
     await waitFor(() =>
       expect(onSave).toHaveBeenCalledWith({ link_url: null }),
     );
-    await screen.findByText("Changes saved");
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Save changes",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
     view.rerender(<TaskForm task={task} busy={false} onSave={onSave} />);
     expect(screen.queryByRole("link", { name: /Open saved link/ })).toBeNull();
     view.rerender(<TaskForm task={linked} busy={false} onSave={onSave} />);

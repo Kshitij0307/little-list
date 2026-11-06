@@ -11,10 +11,7 @@ import {
 } from "../domain/task-draft";
 import type { Task, TaskPatch } from "../domain/task";
 
-type Feedback =
-  | { kind: "idle" }
-  | { kind: "saved" }
-  | { kind: "invalid"; message: string };
+type Feedback = { kind: "idle" } | { kind: "invalid"; message: string };
 
 export function useTaskForm(
   task: Task,
@@ -48,10 +45,8 @@ export function useTaskForm(
       return;
     }
     setFeedback({ kind: "idle" });
-    if (!Object.keys(patch).length || (await onSave(patch))) {
-      setChanges({});
-      setFeedback({ kind: "saved" });
-    }
+    if (Object.keys(patch).length && !(await onSave(patch))) return;
+    setChanges({});
   }
 
   return {
@@ -59,7 +54,6 @@ export function useTaskForm(
     change,
     save,
     dirty,
-    saved: feedback.kind === "saved" && !dirty,
     validationError: feedback.kind === "invalid" ? feedback.message : null,
   };
 }

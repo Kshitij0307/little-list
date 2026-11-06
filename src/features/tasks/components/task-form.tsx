@@ -4,6 +4,7 @@ import fieldsStyles from "@/components/ui/fields.module.css";
 import { CalendarDays, ExternalLink, Pin, Star, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChoiceMenu } from "@/components/ui/choice-menu";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   STATUSES,
   STATUS_LABELS,
@@ -23,7 +24,7 @@ export function TaskForm({
   onSave(patch: TaskPatch): Promise<boolean>;
   onMoveToMainList?(): Promise<boolean>;
 }) {
-  const { values, change, save, dirty, validationError, saved } = useTaskForm(
+  const { values, change, save, dirty, validationError } = useTaskForm(
     task,
     onSave,
   );
@@ -109,18 +110,18 @@ export function TaskForm({
           />
         </div>
         <div className={formStyles["due-date-field"]}>
-          <label className={fieldsStyles["field-label"]} htmlFor="task-due">
+          <label
+            className={fieldsStyles["field-label"]}
+            id="task-due-label"
+            htmlFor="task-due"
+          >
             <CalendarDays size={14} /> Due date
           </label>
-          <input
-            className={[
-              fieldsStyles["field"],
-              formStyles["due-date-input"],
-            ].join(" ")}
+          <DatePicker
             id="task-due"
-            type="date"
+            labelId="task-due-label"
             value={values.due_date}
-            onChange={(event) => change("due_date", event.target.value)}
+            onChange={(date) => change("due_date", date)}
             disabled={busy}
           />
         </div>
@@ -172,9 +173,6 @@ export function TaskForm({
         </p>
       )}
       <div className={formStyles["editor-footer"]}>
-        {saved && (
-          <span className={formStyles["inline-save-note"]}>Changes saved</span>
-        )}
         <Button type="submit" disabled={busy || !dirty}>
           {busy ? "Saving…" : "Save changes"}
         </Button>

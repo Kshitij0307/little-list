@@ -91,7 +91,11 @@ export function TaskDetailPanels({
       className={styles["task-detail-content"]}
       style={{ "--details-width": `${detailsWidth}%` } as CSSProperties}
     >
-      <div id="task-details-panel" className={styles["details-panel"]}>
+      <div
+        id="task-details-panel"
+        className={styles["details-panel"]}
+        data-overlay-boundary
+      >
         {details}
       </div>
       <div
