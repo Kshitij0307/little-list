@@ -21,7 +21,10 @@ import { TaskDetail } from "../src/features/tasks/components/task-detail";
 import { SubtaskSection } from "../src/features/tasks/components/subtask-section";
 import { TaskListView } from "../src/features/tasks/components/task-list-view";
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => navigation,
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}));
 
 const gateway = vi.hoisted(() => ({
   list: vi.fn(),
@@ -86,10 +89,12 @@ function Notebook() {
 }
 beforeEach(() => {
   vi.resetAllMocks();
+  window.history.replaceState(null, "", "/");
   gateway.list.mockResolvedValue({ userId: null, tasks: [task] });
 });
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -161,6 +166,31 @@ it("uses server tasks immediately without a mount fetch and supports editing and
   fireEvent.click(screen.getByText("Undo"));
   await screen.findByText(task.title);
   expect(gateway.update).toHaveBeenCalledTimes(2);
+});
+
+it("expires the undo opportunity after five seconds", async () => {
+  vi.useFakeTimers();
+  gateway.update.mockResolvedValue({ ...task, title: "Edited title" });
+  render(
+    <TasksProvider
+      mode="cloud"
+      userId="owner-a"
+      initialState={{ tasks: [task] }}
+    >
+      <Page />
+    </TasksProvider>,
+  );
+
+  fireEvent.click(screen.getByText("Edit"));
+  await act(async () => {
+    await Promise.resolve();
+  });
+  expect(screen.getByText("Edited title")).toBeTruthy();
+  expect(screen.getByText("Task updated")).toBeTruthy();
+  await act(async () => {
+    vi.advanceTimersByTime(5_000);
+  });
+  expect(screen.queryByText("Task updated")).toBeNull();
 });
 
 it("shows a server load error with a working client retry", async () => {

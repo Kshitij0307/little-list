@@ -17,6 +17,10 @@ import { cn } from "@/lib/utils";
 import { mainTasks, sortTasks, type TaskStatus } from "../domain/task";
 import { useTaskContext } from "../hooks/tasks-provider";
 import {
+  useFlagQueryParam,
+  useStatusQueryParam,
+} from "../hooks/use-status-query-param";
+import {
   SelectableTaskList,
   TaskSelectionToggle,
 } from "./selectable-task-list";
@@ -32,11 +36,21 @@ const TAB_NOTES: Record<TaskStatus, string> = {
 
 export function TaskListView() {
   const router = useRouter();
+  const [status, setStatus] = useStatusQueryParam("status");
+  const [focusToday, setFocusToday] = useFlagQueryParam("focus");
   const { tasks, loading, busy, error, create, listFilters, setListFilters } =
     useTaskContext();
-  const { status, query, focusToday } = listFilters;
-  const changeFilters = (patch: Partial<typeof listFilters>) =>
-    setListFilters((filters) => ({ ...filters, ...patch }));
+  const { query } = listFilters;
+  const changeFilters = (patch: {
+    status?: TaskStatus;
+    query?: string;
+    focusToday?: boolean;
+  }) => {
+    if (patch.status !== undefined) setStatus(patch.status);
+    if (patch.focusToday !== undefined) setFocusToday(patch.focusToday);
+    if (patch.query !== undefined)
+      setListFilters((filters) => ({ ...filters, query: patch.query ?? "" }));
+  };
   const [draft, setDraft] = useState("");
   const addInput = useRef<HTMLInputElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);

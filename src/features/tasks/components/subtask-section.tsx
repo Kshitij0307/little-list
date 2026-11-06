@@ -13,6 +13,7 @@ import {
   type TaskStatus,
 } from "../domain/task";
 import { useTaskContext } from "../hooks/tasks-provider";
+import { useStatusQueryParam } from "../hooks/use-status-query-param";
 import { SelectableTaskList } from "./selectable-task-list";
 import { useTaskSelection } from "../hooks/use-task-selection";
 import { TaskPicker } from "./task-picker";
@@ -31,7 +32,7 @@ export function SubtaskSection({
   onOpenTask(id: string): void;
 }) {
   const { tasks, busy, create, update } = useTaskContext();
-  const [subtaskStatus, setSubtaskStatus] = useState<TaskStatus>("todo");
+  const [subtaskStatus, setSubtaskStatus] = useStatusQueryParam("status");
   const [subtaskTitle, setSubtaskTitle] = useState("");
   const [existingId, setExistingId] = useState("");
   const children = childTasks(tasks, taskId);

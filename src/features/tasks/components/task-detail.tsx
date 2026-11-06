@@ -12,9 +12,11 @@ import { TaskForm } from "./task-form";
 import { TaskDetailPanels } from "./task-detail-panels";
 import { SubtaskSection } from "./subtask-section";
 import { TaskErrorBanner } from "./task-error-banner";
+import { useGuardedNavigation } from "@/components/unsaved-changes-provider";
 export function TaskDetail({ taskId }: { taskId: string }) {
   const { tasks, loading, busy, error, update } = useTaskContext();
   const router = useRouter();
+  const navigate = useGuardedNavigation();
   const task = tasks.find((item) => item.id === taskId && !item.deleted_at);
   if (loading) return <NotebookStatus embedded />;
   if (!task && !error)
@@ -92,7 +94,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           <SubtaskSection
             key={`subtasks-${task.id}`}
             taskId={task.id}
-            onOpenTask={(id) => router.push(`/tasks/${id}`)}
+            onOpenTask={(id) => navigate(() => router.push(`/tasks/${id}`))}
           />
         }
       />

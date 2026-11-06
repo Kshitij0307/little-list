@@ -8,7 +8,7 @@ export function AccountMenu({ email }: { email?: string }) {
       <span className={styles.email} title={email}>
         {email ?? "Your account"}
       </span>
-      <form action={signOut}>
+      <form action={signOut} data-navigation-form>
         <AuthSubmitButton small pendingLabel="Signing out…">
           Sign out
         </AuthSubmitButton>

@@ -34,7 +34,10 @@ vi.mock("../src/features/tasks/client/task-gateway", () => ({
   createGateway: () => gateway,
 }));
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => navigation,
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}));
 const first = makeTask(
   createTaskSchema.parse({
     id: "be7f3440-3868-4e48-90fb-f2e8dbce5b26",
@@ -61,8 +64,113 @@ function UndoControl() {
     </button>
   );
 }
-beforeEach(() => vi.resetAllMocks());
+beforeEach(() => {
+  vi.resetAllMocks();
+  window.history.replaceState(null, "", "/");
+});
 afterEach(cleanup);
+
+it("restores the selected status tab from the URL and preserves other parameters", () => {
+  const finished = {
+    ...first,
+    id: "08f11c15-0d3c-47c2-98c4-6ea2ae266ada",
+    title: "Finished task",
+    status: "done" as const,
+  };
+  window.history.replaceState(null, "", "/?status=done&view=compact");
+
+  render(
+    <TasksProvider
+      mode="cloud"
+      userId="owner"
+      initialState={{ tasks: [first, progress, finished] }}
+    >
+      <TaskListView />
+    </TasksProvider>,
+  );
+
+  expect(
+    screen.getByRole("tab", { name: "Done 1" }).getAttribute("aria-selected"),
+  ).toBe("true");
+  expect(screen.getByText("Finished task")).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("tab", { name: "In progress 1" }));
+  expect(window.location.search).toBe("?status=in_progress&view=compact");
+  expect(screen.getByText("Other tab")).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("tab", { name: "Todo 1" }));
+  expect(window.location.search).toBe("?view=compact");
+});
+
+it("restores the focus filter from the URL and preserves it across status changes", () => {
+  const focusedTodo = { ...first, focus_today: true };
+  const focusedProgress = { ...progress, focus_today: true };
+  window.history.replaceState(
+    null,
+    "",
+    "/?status=in_progress&focus=true&view=compact",
+  );
+
+  render(
+    <TasksProvider
+      mode="cloud"
+      userId="owner"
+      initialState={{ tasks: [focusedTodo, focusedProgress, second] }}
+    >
+      <TaskListView />
+    </TasksProvider>,
+  );
+
+  const focus = screen.getByRole("button", { name: "Focus today" });
+  expect(focus.getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByText("Other tab")).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("tab", { name: "Todo 2" }));
+  expect(window.location.search).toBe("?focus=true&view=compact");
+  expect(screen.getByText("First")).toBeTruthy();
+  expect(screen.queryByText("Second")).toBeNull();
+
+  fireEvent.click(focus);
+  expect(window.location.search).toBe("?view=compact");
+  expect(screen.getByText("Second")).toBeTruthy();
+
+  fireEvent.click(focus);
+  expect(window.location.search).toBe("?view=compact&focus=true");
+});
+
+it("restores the selected subtask tab from the task route status parameter", () => {
+  const child = { ...first, parent_id: progress.id };
+  const finishedChild = {
+    ...child,
+    id: "29d81585-7d1d-4a29-b441-8ae084e1868c",
+    title: "Finished subtask",
+    status: "done" as const,
+  };
+  window.history.replaceState(
+    null,
+    "",
+    "/tasks/parent?status=done&view=compact",
+  );
+
+  render(
+    <TasksProvider
+      mode="cloud"
+      userId="owner"
+      initialState={{ tasks: [progress, child, finishedChild] }}
+    >
+      <SubtaskSection taskId={progress.id} onOpenTask={vi.fn()} />
+    </TasksProvider>,
+  );
+
+  expect(
+    screen.getByRole("tab", { name: "Done 1" }).getAttribute("aria-selected"),
+  ).toBe("true");
+  expect(screen.getByText("Finished subtask")).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("tab", { name: "Todo 1" }));
+  expect(window.location.search).toBe("?view=compact");
+  expect(screen.getByText("First")).toBeTruthy();
+});
 
 it("reorders from task content with Alt+Arrow and shows no drag handle", async () => {
   gateway.reorder.mockResolvedValue({ ...first, rank: "zzzzzzzzzzzy" });

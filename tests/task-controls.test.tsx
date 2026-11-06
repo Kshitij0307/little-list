@@ -152,6 +152,54 @@ describe("shared task controls", () => {
     expect(onEdit).toHaveBeenCalledOnce();
   });
 
+  it("moves a subtask to the main list from its row menu", async () => {
+    const onUpdate = vi.fn();
+    const view = render(
+      <ul>
+        <TaskRow
+          task={{ ...task, parent_id: "5e02fe81-ad02-44f9-98b6-99031a241829" }}
+          busy={false}
+          onEdit={vi.fn()}
+          onUpdate={onUpdate}
+        />
+      </ul>,
+    );
+
+    fireEvent.keyDown(
+      screen.getByRole("button", {
+        name: `More options for ${task.title}`,
+      }),
+      { key: "ArrowDown" },
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Move to main list" }),
+    );
+    expect(onUpdate).toHaveBeenCalledWith(
+      { parent_id: null },
+      "Subtask moved to main list",
+    );
+
+    view.rerender(
+      <ul>
+        <TaskRow
+          task={task}
+          busy={false}
+          onEdit={vi.fn()}
+          onUpdate={onUpdate}
+        />
+      </ul>,
+    );
+    fireEvent.keyDown(
+      screen.getByRole("button", {
+        name: `More options for ${task.title}`,
+      }),
+      { key: "ArrowDown" },
+    );
+    expect(
+      screen.queryByRole("menuitem", { name: "Move to main list" }),
+    ).toBeNull();
+  });
+
   it("copies the task title from the row action", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {

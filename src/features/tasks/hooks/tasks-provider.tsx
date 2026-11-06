@@ -2,15 +2,11 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import type { StorageMode } from "../client/task-gateway";
-import type { TaskStatus } from "../domain/task";
 import { useTasks, type InitialTaskState } from "./use-tasks";
+import { UnsavedChangesProvider } from "@/components/unsaved-changes-provider";
 
-type ListFilters = { status: TaskStatus; query: string; focusToday: boolean };
-const initialFilters: ListFilters = {
-  status: "todo",
-  query: "",
-  focusToday: false,
-};
+type ListFilters = { query: string };
+const initialFilters: ListFilters = { query: "" };
 function useNotebook(
   mode: StorageMode,
   userId?: string,
@@ -35,7 +31,9 @@ export function TasksProvider({
 }) {
   const notebook = useNotebook(mode, userId, initialState);
   return (
-    <TasksContext.Provider value={notebook}>{children}</TasksContext.Provider>
+    <UnsavedChangesProvider>
+      <TasksContext.Provider value={notebook}>{children}</TasksContext.Provider>
+    </UnsavedChangesProvider>
   );
 }
 

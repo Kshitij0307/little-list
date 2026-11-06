@@ -16,6 +16,7 @@ import {
   Pin,
   Star,
   Trash2,
+  Unlink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -303,6 +304,20 @@ export function TaskRow({
                 <DropdownMenu.Label className={menuStyles["dropdown-label"]}>
                   Move to
                 </DropdownMenu.Label>
+                {task.parent_id && (
+                  <DropdownMenu.Item
+                    className={menuStyles["dropdown-item"]}
+                    onSelect={() =>
+                      onUpdate(
+                        { parent_id: null },
+                        "Subtask moved to main list",
+                      )
+                    }
+                  >
+                    <Unlink size={15} />
+                    Move to main list
+                  </DropdownMenu.Item>
+                )}
                 {STATUSES.filter((status) => status !== task.status).map(
                   (status) => (
                     <DropdownMenu.Item

@@ -31,6 +31,7 @@ type UndoAction = { label: string } & (
   | { deletion: TaskDeletion; tasks: Task[] }
   | { reorder: TaskRankMove }
 );
+const UNDO_DURATION_MS = 5_000;
 export type InitialTaskState = { tasks: Task[] } | { error: string };
 const errorMessage = (value: unknown) =>
   value instanceof Error ? value.message : "Could not save. Please try again.";
@@ -56,6 +57,12 @@ export function useTasks(
   const lock = useRef(false);
   const loaded = useRef(!!initialState && "tasks" in initialState);
   const lastReturnRefreshAt = useRef(0);
+
+  useEffect(() => {
+    if (!undoAction) return;
+    const timer = setTimeout(() => setUndoAction(null), UNDO_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [undoAction]);
 
   const reload = useCallback(async () => {
     if (lock.current) return;

@@ -13,6 +13,7 @@ import {
   type TaskStatus,
 } from "../domain/task";
 import { useTaskForm } from "../hooks/use-task-form";
+import { useUnsavedChangesGuard } from "@/components/unsaved-changes-provider";
 export function TaskForm({
   task,
   busy,
@@ -28,6 +29,7 @@ export function TaskForm({
     task,
     onSave,
   );
+  useUnsavedChangesGuard(dirty);
   return (
     <form
       className={formStyles["editor-form"]}
