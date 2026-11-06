@@ -9,7 +9,7 @@ import {
   Feather,
   Plus,
   Search,
-  Sun,
+  Star,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -134,7 +134,7 @@ export function TaskListView() {
             aria-pressed={focusToday}
             onClick={() => changeFilters({ focusToday: !focusToday })}
           >
-            <Sun size={15} />
+            <Star size={15} fill={focusToday ? "currentColor" : "none"} />
             Focus today
           </Button>
         </div>
@@ -188,6 +188,7 @@ export function TaskListView() {
             externalTrigger
             tasks={visible}
             status={status}
+            reorderEnabled={!query.trim() && !focusToday}
             className={listStyles["task-list"]}
             onOpenTask={(id) => router.push(`/tasks/${id}`)}
           >
@@ -196,7 +197,7 @@ export function TaskListView() {
                 {status === "done" ? (
                   <CheckCheck size={30} strokeWidth={1.3} />
                 ) : focusToday ? (
-                  <Sun size={30} strokeWidth={1.3} />
+                  <Star size={30} strokeWidth={1.3} />
                 ) : (
                   <Feather size={30} strokeWidth={1.3} />
                 )}

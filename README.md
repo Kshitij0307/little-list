@@ -7,13 +7,13 @@ Little List is a calm, responsive task manager for capturing everyday work witho
 - Organize tasks across **Todo**, **In progress**, and **Done**.
 - Move tasks between statuses while preserving their details.
 - Select multiple tasks within one status tab and move or soft-delete them together, including in subtask lists. Selection uses the existing circle while normal completion stays unchanged; one Undo reverses a batch. On the main list, Select tasks sits beside Focus today.
-- Add notes, an optional web link, due dates, stars, and a **Focus today** flag.
+- Add notes, an optional web link, due dates, pins, and a **Focus today** flag.
 - Save a post, reel, article, or other web page with context in its task notes, then open the saved link from task details. Links work on subtasks too.
 - Open every task at its own shareable `/tasks/[id]` route.
 - Break work into nested subtasks or move an existing task beneath another task.
 - Track each task's subtasks in their own Todo, In progress, and Done tabs.
 - Search task titles and notes within the active status.
-- Sort active tasks by importance and completed tasks by completion time.
+- Pin important tasks and manually arrange pinned and regular tasks separately.
 - Undo recent additions, edits, moves, and deletions.
 - Export the current task list as JSON.
 - Use keyboard shortcuts: `N` for a new task and `/` for search.
@@ -68,6 +68,8 @@ Browser-local tasks are not automatically copied to Supabase. Existing cloud tas
 For task links on an existing cloud database, review and apply [the task links migration](supabase/migrations/202610270001_add_task_links.sql) before using this version. It adds an optional `link_url` column and allows authenticated users to update it under the existing ownership policies. Older tasks keep their notes and have no link until one is added. Local mode needs no database migration. Links accept full HTTP or HTTPS URLs; remove a saved link by clearing the field and saving.
 
 Cloud bulk moves and deletion require [the batch actions migration](supabase/migrations/202610270002_batch_task_status.sql). Its transactions lock and validate the selected rows under the existing ownership policies before changing anything. Stale, inaccessible, or out-of-scope selections fail as a whole. Undo checks the selected roots’ deletion timestamp, status, and parent, then restores the descendants marked by that same deletion. Local mode saves the batch in one browser-storage write. If an earlier version of this batch migration is already installed, rerun the updated script to add the deletion operation.
+
+Cloud pinning and manual ordering require [the pin and rank migration](supabase/migrations/202611050001_pin_and_rank_tasks.sql). It preserves existing stars as pins, gives every task a compact sortable rank, and adds the authenticated move operation. Normal creates, status changes, parent changes, pin changes, and reorders update only the affected task. Local mode upgrades older browser data automatically and needs no migration.
 
 ## Available commands
 
@@ -124,3 +126,4 @@ For cloud notebooks, apply [the cascading deletion migration](supabase/migration
 - Deletion is soft and includes every nested subtask across all statuses. One-step Undo restores that group, leaving previously deleted branches deleted, and survives navigation within the notebook. A subtask cannot be restored beneath a deleted parent.
 - Completing a parent task does not automatically complete its subtasks.
 - Bulk selection stays within the current status and parent. Select all affects the visible filtered rows, up to 500 at a time; changing tabs, search, or focus filters clears selection. Successful moves exit selection mode, while failed moves restore the rows and keep selection for retry. Undo reverses the batch only if its tasks still belong to that parent and destination status. As with individual status changes, completion timestamps are recalculated on reopening or completing tasks.
+- Dragging and keyboard arrow reordering stay inside the task's current pinned or regular group. Pinning remains an explicit action, and filtered search or Focus today views do not allow reordering.

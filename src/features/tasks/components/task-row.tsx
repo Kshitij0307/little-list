@@ -3,6 +3,7 @@ import rowStyles from "./task-row.module.css";
 import menuStyles from "@/components/ui/dropdown-menu.module.css";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import type { CSSProperties } from "react";
 import {
   ArrowRight,
   CalendarDays,
@@ -11,8 +12,8 @@ import {
   MoreHorizontal,
   Pencil,
   RotateCcw,
+  Pin,
   Star,
-  Sun,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,9 +22,18 @@ import {
   localDate,
   STATUS_LABELS,
   STATUSES,
+  type PinColor,
   type Task,
   type TaskPatch,
 } from "../domain/task";
+
+const pinColorClasses: Record<PinColor, string> = {
+  olive: rowStyles["pin-olive"],
+  berry: rowStyles["pin-berry"],
+  sage: rowStyles["pin-sage"],
+  slate: rowStyles["pin-slate"],
+  cream: rowStyles["pin-cream"],
+};
 
 export function TaskRow({
   task,
@@ -31,12 +41,28 @@ export function TaskRow({
   onEdit,
   onUpdate,
   selection,
+  reorderInteraction,
+  dragging,
+  dragOffsetY,
+  justDropped,
+  dropPosition,
+  shiftDirection,
 }: {
   task: Task;
   busy: boolean;
   onEdit(): void;
   onUpdate(patch: TaskPatch, label?: string): void;
   selection?: { selected: boolean; disabled?: boolean; toggle(): void };
+  reorderInteraction?: {
+    onPointerDown(event: React.PointerEvent<HTMLButtonElement>): void;
+    onKeyDown(event: React.KeyboardEvent<HTMLButtonElement>): void;
+    consumeClick(): boolean;
+  };
+  dragging?: boolean;
+  dragOffsetY?: number;
+  justDropped?: boolean;
+  dropPosition?: "before" | "after";
+  shiftDirection?: "up" | "down";
 }) {
   const done = task.status === "done";
   const overdue = !!task.due_date && task.due_date < localDate() && !done;
@@ -51,49 +77,92 @@ export function TaskRow({
   return (
     <li
       data-task-row
+      data-task-id={task.id}
+      data-dragging={dragging || undefined}
+      data-shift={shiftDirection}
       className={cn(
         rowStyles["task-row"],
         done && rowStyles["task-done"],
         selection && rowStyles["selecting"],
         selection?.selected && rowStyles["task-selected"],
+        dragging && rowStyles.dragging,
+        justDropped && rowStyles.settled,
+        dropPosition === "before" && rowStyles["drop-before"],
+        dropPosition === "after" && rowStyles["drop-after"],
+        shiftDirection === "up" && rowStyles["shift-up"],
+        shiftDirection === "down" && rowStyles["shift-down"],
       )}
+      style={
+        dragging
+          ? ({ "--drag-offset-y": `${dragOffsetY ?? 0}px` } as CSSProperties)
+          : undefined
+      }
     >
       <div data-task-primary className={rowStyles["task-primary"]}>
-        <button
-          className={rowStyles["task-check"]}
-          role={selection ? "checkbox" : undefined}
-          aria-checked={selection ? selection.selected : undefined}
-          aria-label={
-            selection
-              ? `Select ${task.title}`
-              : done
-                ? `Reopen ${task.title}`
-                : `Complete ${task.title}`
-          }
-          disabled={busy || selection?.disabled}
-          onClick={() =>
-            selection
-              ? selection.toggle()
-              : onUpdate(
-                  { status: done ? "todo" : "done" },
-                  done ? "Task reopened" : "Task completed",
-                )
-          }
-        >
-          <span className={rowStyles["check-icon"]} aria-hidden="true">
-            {(selection ? selection.selected : done) ? (
-              <Check size={18} strokeWidth={2.2} />
-            ) : (
-              <Circle size={22} strokeWidth={1.3} />
+        <div className={rowStyles["check-stack"]}>
+          <span
+            className={cn(
+              rowStyles["pin-marker"],
+              pinColorClasses[task.pin_color ?? "olive"],
+              task.pinned && rowStyles.visible,
             )}
+            role={task.pinned ? "img" : undefined}
+            aria-label={task.pinned ? "Pinned" : undefined}
+            aria-hidden={task.pinned ? undefined : "true"}
+          >
+            <Pin size={13} fill="currentColor" />
           </span>
-        </button>
+          <button
+            className={rowStyles["task-check"]}
+            role={selection ? "checkbox" : undefined}
+            aria-checked={selection ? selection.selected : undefined}
+            aria-label={
+              selection
+                ? `Select ${task.title}`
+                : done
+                  ? `Reopen ${task.title}`
+                  : `Complete ${task.title}`
+            }
+            disabled={busy || selection?.disabled}
+            onClick={() =>
+              selection
+                ? selection.toggle()
+                : onUpdate(
+                    { status: done ? "todo" : "done" },
+                    done ? "Task reopened" : "Task completed",
+                  )
+            }
+          >
+            <span className={rowStyles["check-icon"]} aria-hidden="true">
+              {(selection ? selection.selected : done) ? (
+                <Check size={18} strokeWidth={2.2} />
+              ) : (
+                <Circle size={22} strokeWidth={1.3} />
+              )}
+            </span>
+          </button>
+        </div>
         <button
-          className={rowStyles["task-copy"]}
-          onClick={() => (selection ? selection.toggle() : onEdit())}
+          className={cn(
+            rowStyles["task-copy"],
+            reorderInteraction && rowStyles["reorder-surface"],
+          )}
+          onClick={() => {
+            if (reorderInteraction?.consumeClick()) return;
+            if (selection) selection.toggle();
+            else onEdit();
+          }}
+          onPointerDown={reorderInteraction?.onPointerDown}
+          onKeyDown={reorderInteraction?.onKeyDown}
+          onContextMenu={(event) => {
+            if (reorderInteraction) event.preventDefault();
+          }}
           disabled={busy || selection?.disabled}
           aria-pressed={selection ? selection.selected : undefined}
           aria-label={selection ? `Select ${task.title}` : `Edit ${task.title}`}
+          aria-keyshortcuts={
+            reorderInteraction ? "Alt+ArrowUp Alt+ArrowDown" : undefined
+          }
         >
           <span className={rowStyles["task-title"]}>{task.title}</span>
           {task.notes && (
@@ -115,7 +184,7 @@ export function TaskRow({
               )}
               {task.focus_today && !done && (
                 <span>
-                  <Sun size={12} /> Today’s focus
+                  <Star size={12} fill="currentColor" /> Today’s focus
                 </span>
               )}
             </span>
@@ -124,27 +193,6 @@ export function TaskRow({
       </div>
       {!selection && (
         <div data-task-actions className={rowStyles["task-actions"]}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              rowStyles["star-button"],
-              task.starred && rowStyles["is-starred"],
-            )}
-            aria-label={
-              task.starred ? `Unstar ${task.title}` : `Star ${task.title}`
-            }
-            aria-pressed={task.starred}
-            disabled={busy}
-            onClick={() =>
-              onUpdate(
-                { starred: !task.starred },
-                task.starred ? "Star removed" : "Task starred",
-              )
-            }
-          >
-            <Star size={17} fill={task.starred ? "currentColor" : "none"} />
-          </Button>
           {!done && (
             <Button
               variant="secondary"
@@ -207,10 +255,25 @@ export function TaskRow({
                     )
                   }
                 >
-                  <Sun size={15} />
+                  <Star
+                    size={15}
+                    fill={task.focus_today ? "currentColor" : "none"}
+                  />
                   {task.focus_today
                     ? "Remove from today"
                     : "Focus on this today"}
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className={menuStyles["dropdown-item"]}
+                  onSelect={() =>
+                    onUpdate(
+                      { pinned: !task.pinned },
+                      task.pinned ? "Task unpinned" : "Task pinned",
+                    )
+                  }
+                >
+                  <Pin size={15} fill={task.pinned ? "currentColor" : "none"} />
+                  {task.pinned ? "Unpin task" : "Pin task"}
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator
                   className={menuStyles["dropdown-separator"]}

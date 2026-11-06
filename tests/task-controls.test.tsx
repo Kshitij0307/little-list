@@ -118,7 +118,7 @@ describe("shared task controls", () => {
       expect(toggle).toHaveBeenCalledOnce();
     },
   );
-  it("keeps opening a task separate from its completion and star actions", () => {
+  it("keeps opening a task separate from completion and menu actions", async () => {
     const onEdit = vi.fn();
     const onUpdate = vi.fn();
     render(
@@ -133,11 +133,14 @@ describe("shared task controls", () => {
       { status: "done" },
       "Task completed",
     );
-    fireEvent.click(screen.getByRole("button", { name: `Star ${task.title}` }));
-    expect(onUpdate).toHaveBeenLastCalledWith(
-      { starred: true },
-      "Task starred",
+    fireEvent.keyDown(
+      screen.getByRole("button", {
+        name: `More options for ${task.title}`,
+      }),
+      { key: "ArrowDown" },
     );
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Pin task" }));
+    expect(onUpdate).toHaveBeenLastCalledWith({ pinned: true }, "Task pinned");
     expect(onEdit).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: `Edit ${task.title}` }));
     expect(onEdit).toHaveBeenCalledOnce();
@@ -172,10 +175,36 @@ describe("shared task controls", () => {
     expect(
       actions?.contains(
         screen.getByRole("button", {
-          name: "Star A task title long enough to need truncation",
+          name: "More options for A task title long enough to need truncation",
         }),
       ),
     ).toBe(true);
+    expect(
+      screen.queryByRole("button", {
+        name: "Pin A task title long enough to need truncation",
+      }),
+    ).toBeNull();
+  });
+
+  it("shows a diagonal pin marker above the completion control for pinned tasks", () => {
+    render(
+      <ul>
+        <TaskRow
+          task={{ ...task, pinned: true }}
+          busy={false}
+          onEdit={vi.fn()}
+          onUpdate={vi.fn()}
+        />
+      </ul>,
+    );
+    const marker = screen.getByRole("img", { name: "Pinned" });
+    const completion = screen.getByRole("button", {
+      name: `Complete ${task.title}`,
+    });
+    expect(marker.parentElement?.contains(completion)).toBe(true);
+    expect(
+      screen.queryByRole("button", { name: `Unpin ${task.title}` }),
+    ).toBeNull();
   });
 
   it.each(["todo", "done"] as const)(

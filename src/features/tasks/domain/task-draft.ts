@@ -2,7 +2,7 @@ import { taskFieldsSchema, type Task, type TaskPatch } from "./task";
 
 export type TaskDraft = Pick<
   Task,
-  "title" | "notes" | "status" | "starred" | "focus_today"
+  "title" | "notes" | "status" | "pinned" | "focus_today"
 > & { due_date: string; link_url: string };
 export type DraftChanges = Partial<TaskDraft>;
 
@@ -13,7 +13,7 @@ export function taskDraft(task: Task, changes: DraftChanges = {}): TaskDraft {
     link_url: task.link_url ?? "",
     due_date: task.due_date ?? "",
     status: task.status,
-    starred: task.starred,
+    pinned: task.pinned,
     focus_today: task.focus_today,
     ...changes,
   };

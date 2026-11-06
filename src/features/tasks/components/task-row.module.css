@@ -1,10 +1,61 @@
 .task-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0;
   min-height: 68px;
   border-bottom: 1px solid var(--line);
   animation: appear 0.2s ease-out;
+  transition:
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 180ms ease,
+    background 180ms ease;
+  will-change: transform;
+}
+
+.dragging {
+  z-index: 3;
+  transform: translate3d(0, var(--drag-offset-y), 0) scale(1.035);
+  border-radius: 12px;
+  outline: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line));
+  background: var(--surface);
+  box-shadow:
+    0 20px 38px rgb(24 25 19 / 24%),
+    0 5px 12px rgb(24 25 19 / 16%);
+  opacity: 0.98;
+  cursor: grabbing;
+  pointer-events: none;
+  transition:
+    box-shadow 180ms ease,
+    background 180ms ease,
+    border-color 180ms ease;
+}
+
+.drop-before::before,
+.drop-after::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+.drop-before::before {
+  top: -1px;
+}
+
+.drop-after::after {
+  bottom: -1px;
+}
+.shift-up {
+  transform: translate3d(0, -100%, 0);
+}
+.shift-down {
+  transform: translate3d(0, 100%, 0);
+}
+.settled {
+  animation: settle-flash 480ms cubic-bezier(0.15, 1, 0.3, 1);
 }
 .task-row:last-child {
   border-bottom: 0;
@@ -28,6 +79,94 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
+}
+.check-stack {
+  position: relative;
+  display: flex;
+  flex: 0 0 44px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+}
+.pin-marker {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  z-index: 2;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  opacity: 0;
+  filter: drop-shadow(2px 3px 2px rgb(24 25 19 / 28%));
+}
+.pin-olive {
+  border: 1px solid #66734c;
+  background: radial-gradient(
+    circle at 32% 26%,
+    #e2efb4 0 12%,
+    #aebf7d 42%,
+    #66734c 100%
+  );
+  box-shadow:
+    inset 1px 1px 1px #f0f6d5,
+    inset -2px -3px 3px #4e5b3a;
+}
+.pin-berry {
+  border: 1px solid #733e4c;
+  background: radial-gradient(
+    circle at 32% 26%,
+    #f4b9bb 0 12%,
+    #c8787f 42%,
+    #733e4c 100%
+  );
+  box-shadow:
+    inset 1px 1px 1px #ffe1df,
+    inset -2px -3px 3px #62333e;
+}
+.pin-sage {
+  border: 1px solid #456455;
+  background: radial-gradient(
+    circle at 32% 26%,
+    #c8ded0 0 12%,
+    #78a18b 42%,
+    #456455 100%
+  );
+  box-shadow:
+    inset 1px 1px 1px #e4f4e8,
+    inset -2px -3px 3px #354c40;
+}
+.pin-slate {
+  border: 1px solid #4b626b;
+  background: radial-gradient(
+    circle at 32% 26%,
+    #d3dde0 0 12%,
+    #8299a0 42%,
+    #4b626b 100%
+  );
+  box-shadow:
+    inset 1px 1px 1px #edf5f5,
+    inset -2px -3px 3px #3d5057;
+}
+.pin-cream {
+  border: 1px solid #aaa18d;
+  background: radial-gradient(
+    circle at 32% 26%,
+    #fffdf4 0 12%,
+    #e4ddc9 42%,
+    #aaa18d 100%
+  );
+  box-shadow:
+    inset 1px 1px 1px #fffef8,
+    inset -2px -3px 3px #8f8877;
+}
+.pin-marker svg {
+  display: none;
+}
+.pin-marker.visible {
+  opacity: 1;
 }
 .task-check:hover:not(:disabled) {
   color: var(--accent);
@@ -72,6 +211,17 @@
   gap: 6px;
   border-radius: 5px;
   transition: background 0.15s;
+}
+.reorder-surface {
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.dragging .reorder-surface {
+  cursor: grabbing;
+  touch-action: none;
 }
 .task-copy:hover:not(:disabled),
 .task-copy:focus-visible {
@@ -129,12 +279,6 @@
   gap: 0;
   flex: 0 0 auto;
 }
-.star-button {
-  color: var(--subtle);
-}
-.star-button.is-starred {
-  color: var(--gold);
-}
 .advance-button {
   min-width: 68px;
   padding-inline: 9px;
@@ -145,6 +289,21 @@
   }
   to {
     opacity: 1;
+  }
+}
+@keyframes settle-flash {
+  0% {
+    background: color-mix(in srgb, var(--accent-soft) 80%, var(--surface));
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  100% {
+    background: transparent;
+    box-shadow: inset 0 0 0 transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .task-row {
+    transition: none;
   }
 }
 @media (max-width: 700px) {

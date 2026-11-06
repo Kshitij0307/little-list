@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { rankBetween, taskRankSchema } from "./task-rank";
 
 export const STATUSES = ["todo", "in_progress", "done"] as const;
 export type TaskStatus = (typeof STATUSES)[number];
@@ -7,6 +8,9 @@ export const STATUS_LABELS: Record<TaskStatus, string> = {
   in_progress: "In progress",
   done: "Done",
 };
+export const PIN_COLORS = ["olive", "berry", "sage", "slate", "cream"] as const;
+export const pinColorSchema = z.enum(PIN_COLORS);
+export type PinColor = (typeof PIN_COLORS)[number];
 
 const dateOnly = z
   .string()
@@ -46,7 +50,7 @@ const editableTaskSchema = z.object({
   notes: z.string().max(5000, "Keep notes under 5,000 characters."),
   link_url: taskLink.nullable(),
   status: z.enum(STATUSES),
-  starred: z.boolean(),
+  pinned: z.boolean(),
   focus_today: z.boolean(),
   due_date: dateOnly.nullable(),
 });
@@ -54,7 +58,7 @@ export const taskFieldsSchema = editableTaskSchema.extend({
   notes: editableTaskSchema.shape.notes.default(""),
   link_url: editableTaskSchema.shape.link_url.default(null),
   status: editableTaskSchema.shape.status.default("todo"),
-  starred: editableTaskSchema.shape.starred.default(false),
+  pinned: editableTaskSchema.shape.pinned.default(false),
   focus_today: editableTaskSchema.shape.focus_today.default(false),
   due_date: editableTaskSchema.shape.due_date.default(null),
 });
@@ -72,6 +76,8 @@ export const updateTaskSchema = editableTaskSchema
 export const taskSchema = taskFieldsSchema.extend({
   id: z.uuid(),
   parent_id: z.uuid().nullable().default(null),
+  pin_color: pinColorSchema.nullable().default(null),
+  rank: taskRankSchema,
   created_at: z.iso.datetime({ offset: true }),
   updated_at: z.iso.datetime({ offset: true }),
   completed_at: z.iso.datetime({ offset: true }).nullable(),
@@ -84,6 +90,7 @@ export type TaskPatch = z.infer<typeof updateTaskSchema>;
 export function makeTask(
   input: CreateTask,
   now = new Date().toISOString(),
+  rank = rankBetween(null, null),
 ): Task {
   return {
     ...createTaskSchema.parse(input),
@@ -91,6 +98,8 @@ export function makeTask(
     updated_at: now,
     completed_at: input.status === "done" ? now : null,
     deleted_at: null,
+    pin_color: null,
+    rank,
   };
 }
 
@@ -113,13 +122,13 @@ export function localDate(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-export function sortTasks(tasks: Task[], status: TaskStatus): Task[] {
+export function sortTasks(tasks: Task[], _status: TaskStatus): Task[] {
+  void _status;
   return [...tasks].sort((a, b) => {
-    if (status === "done")
-      return (b.completed_at ?? "").localeCompare(a.completed_at ?? "");
     return (
-      Number(b.starred) - Number(a.starred) ||
-      b.created_at.localeCompare(a.created_at)
+      Number(b.pinned) - Number(a.pinned) ||
+      a.rank.localeCompare(b.rank) ||
+      a.id.localeCompare(b.id)
     );
   });
 }

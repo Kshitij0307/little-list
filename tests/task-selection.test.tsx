@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   cleanup,
+  act,
   fireEvent,
   render,
   screen,
@@ -27,6 +28,7 @@ const gateway = vi.hoisted(() => ({
   update: vi.fn(),
   move: vi.fn(),
   remove: vi.fn(),
+  reorder: vi.fn(),
 }));
 vi.mock("../src/features/tasks/client/task-gateway", () => ({
   createGateway: () => gateway,
@@ -61,6 +63,198 @@ function UndoControl() {
 }
 beforeEach(() => vi.resetAllMocks());
 afterEach(cleanup);
+
+it("reorders from task content with Alt+Arrow and shows no drag handle", async () => {
+  gateway.reorder.mockResolvedValue({ ...first, rank: "zzzzzzzzzzzy" });
+  render(
+    <TasksProvider
+      mode="cloud"
+      userId="owner"
+      initialState={{ tasks: [first, second] }}
+    >
+      <TaskListView />
+    </TasksProvider>,
+  );
+  expect(
+    screen.queryByRole("button", { name: /drag or use arrow keys/i }),
+  ).toBeNull();
+  const body = screen.getByRole("button", { name: "Edit First" });
+  expect(body.getAttribute("aria-keyshortcuts")).toBe(
+    "Alt+ArrowUp Alt+ArrowDown",
+  );
+  fireEvent.keyDown(body, { key: "ArrowDown", altKey: true });
+  await waitFor(() => expect(gateway.reorder).toHaveBeenCalledOnce());
+  expect(gateway.reorder).toHaveBeenCalledWith({
+    id: first.id,
+    before_id: second.id,
+    after_id: null,
+    status: "todo",
+    parent_id: null,
+    pinned: false,
+  });
+});
+
+it("requires a touch hold, lifts the task, and suppresses opening after release", () => {
+  vi.useFakeTimers();
+  try {
+    class TestPointerEvent extends MouseEvent {
+      pointerId: number;
+      pointerType: string;
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerId = init.pointerId ?? 0;
+        this.pointerType = init.pointerType ?? "";
+      }
+    }
+    vi.stubGlobal("PointerEvent", TestPointerEvent);
+    render(
+      <TasksProvider
+        mode="cloud"
+        userId="owner"
+        initialState={{ tasks: [first, second] }}
+      >
+        <TaskListView />
+      </TasksProvider>,
+    );
+    const body = screen.getByRole("button", { name: "Edit First" });
+    Object.assign(body, { setPointerCapture: vi.fn() });
+    const row = body.closest("[data-task-row]")!;
+    vi.spyOn(row, "getBoundingClientRect").mockReturnValue({
+      top: 50,
+      height: 100,
+    } as DOMRect);
+    const secondRow = screen
+      .getByRole("button", { name: "Edit Second" })
+      .closest("[data-task-row]")!;
+    vi.spyOn(secondRow, "getBoundingClientRect").mockReturnValue({
+      top: 100,
+      height: 100,
+    } as DOMRect);
+    fireEvent.pointerDown(body, {
+      button: 0,
+      pointerId: 7,
+      pointerType: "touch",
+      clientX: 100,
+      clientY: 100,
+    });
+    expect(row.getAttribute("data-dragging")).toBeNull();
+    act(() => vi.advanceTimersByTime(360));
+    expect(row.getAttribute("data-dragging")).toBe("true");
+    fireEvent.pointerMove(body, {
+      pointerId: 7,
+      pointerType: "touch",
+      clientX: 100,
+      clientY: 180,
+    });
+    expect((row as HTMLElement).style.getPropertyValue("--drag-offset-y")).toBe(
+      "80px",
+    );
+    expect(
+      screen
+        .getByRole("button", { name: "Edit Second" })
+        .closest("[data-task-row]")
+        ?.getAttribute("data-shift"),
+    ).toBe("up");
+    fireEvent.pointerUp(body, { pointerId: 7, pointerType: "touch" });
+    fireEvent.click(body);
+    expect(navigation.push).not.toHaveBeenCalled();
+  } finally {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("uses the animated insertion slot when dropping between adjacent tasks", async () => {
+  class TestPointerEvent extends MouseEvent {
+    pointerId: number;
+    pointerType: string;
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 0;
+      this.pointerType = init.pointerType ?? "";
+    }
+  }
+  vi.stubGlobal("PointerEvent", TestPointerEvent);
+  try {
+    gateway.reorder.mockResolvedValue({ ...first, rank: "zzzzzzzzzzzy" });
+    render(
+      <TasksProvider
+        mode="cloud"
+        userId="owner"
+        initialState={{ tasks: [first, second, progress] }}
+      >
+        <TaskListView />
+      </TasksProvider>,
+    );
+    const firstBody = screen.getByRole("button", { name: "Edit First" });
+    Object.assign(firstBody, { setPointerCapture: vi.fn() });
+    const firstRow = firstBody.closest("[data-task-row]")!;
+    const secondRow = screen
+      .getByRole("button", { name: "Edit Second" })
+      .closest("[data-task-row]")!;
+    vi.spyOn(firstRow, "getBoundingClientRect").mockReturnValue({
+      top: 0,
+      height: 100,
+    } as DOMRect);
+    vi.spyOn(secondRow, "getBoundingClientRect").mockReturnValue({
+      top: 100,
+      height: 100,
+    } as DOMRect);
+
+    fireEvent.pointerDown(firstBody, {
+      button: 0,
+      pointerId: 4,
+      pointerType: "mouse",
+      clientX: 50,
+      clientY: 50,
+    });
+    fireEvent.pointerMove(firstBody, {
+      pointerId: 4,
+      pointerType: "mouse",
+      clientX: 55,
+      clientY: 120,
+    });
+    expect(secondRow.getAttribute("data-shift")).toBeNull();
+    fireEvent.pointerUp(firstBody, {
+      pointerId: 4,
+      pointerType: "mouse",
+      clientY: 120,
+    });
+    expect(gateway.reorder).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(firstBody, {
+      button: 0,
+      pointerId: 5,
+      pointerType: "mouse",
+      clientX: 50,
+      clientY: 50,
+    });
+    fireEvent.pointerMove(firstBody, {
+      pointerId: 5,
+      pointerType: "mouse",
+      clientX: 55,
+      clientY: 160,
+    });
+    expect(secondRow.getAttribute("data-shift")).toBe("up");
+    fireEvent.pointerUp(firstBody, {
+      pointerId: 5,
+      pointerType: "mouse",
+      clientY: 160,
+    });
+    await waitFor(() => expect(gateway.reorder).toHaveBeenCalledOnce());
+    expect(gateway.reorder).toHaveBeenCalledWith({
+      id: first.id,
+      before_id: second.id,
+      after_id: null,
+      status: "todo",
+      parent_id: null,
+      pinned: false,
+    });
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
 
 it.each([false, true])(
   "removes and restores all descendant routes with one undo (bulk=%s)",

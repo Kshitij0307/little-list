@@ -29,6 +29,7 @@ const gateway = vi.hoisted(() => ({
   update: vi.fn(),
   move: vi.fn(),
   remove: vi.fn(),
+  reorder: vi.fn(),
 }));
 vi.mock("../src/features/tasks/client/task-gateway", () => ({
   createGateway: () => gateway,
@@ -243,11 +244,11 @@ it("keeps subtask counts and sorted status rows scoped to the current parent", a
     parent_id: task.id,
     title: "Plain step",
   };
-  const starred = {
+  const pinned = {
     ...child,
     id: crypto.randomUUID(),
-    title: "Starred step",
-    starred: true,
+    title: "Pinned step",
+    pinned: true,
   };
   const done = {
     ...child,
@@ -269,7 +270,7 @@ it("keeps subtask counts and sorted status rows scoped to the current parent", a
   };
   gateway.list.mockResolvedValue({
     userId: null,
-    tasks: [task, child, starred, done, deleted, unrelated],
+    tasks: [task, child, pinned, done, deleted, unrelated],
   });
   render(
     <TasksProvider mode="local">
@@ -291,7 +292,7 @@ it("keeps subtask counts and sorted status rows scoped to the current parent", a
   expect(screen.getByText("1/3 done")).toBeTruthy();
   const panel = screen.getByRole("tabpanel");
   const rows = within(panel).getAllByRole("listitem");
-  expect(rows[0].textContent).toContain("Starred step");
+  expect(rows[0].textContent).toContain("Pinned step");
   expect(rows[1].textContent).toContain("Plain step");
   expect(within(panel).queryByText("Deleted step")).toBeNull();
   expect(within(panel).queryByText("Unrelated task")).toBeNull();

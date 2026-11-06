@@ -43,6 +43,54 @@ describe("storage adapters", () => {
     await expect(createGateway("local").create(input)).rejects.toThrow();
     expect(values.get("little-list.tasks.v1")).toBe("not-json");
   });
+  it("upgrades older local stars to pins and assigns ranks", async () => {
+    const legacy = makeTask(input);
+    const oldTask: Record<string, unknown> = { ...legacy };
+    delete oldTask.rank;
+    delete oldTask.pinned;
+    values.set(
+      "little-list.tasks.v1",
+      JSON.stringify([{ ...oldTask, starred: true }]),
+    );
+    const [task] = (await createGateway("local").list()).tasks;
+    expect(task).toMatchObject({ pinned: true });
+    expect(task.rank).toMatch(/^[0-9a-z]{12}$/);
+  });
+  it("assigns the selected pin colors in order for local pins", async () => {
+    const gateway = createGateway("local");
+    const colors = ["olive", "berry", "sage", "slate", "cream"];
+    for (const [index] of colors.entries()) {
+      await gateway.create({
+        ...input,
+        id: crypto.randomUUID(),
+        title: `Pinned ${index}`,
+        pinned: true,
+      });
+    }
+    expect(
+      (await gateway.list()).tasks
+        .filter((task) => task.pinned)
+        .sort((a, b) => a.title.localeCompare(b.title))
+        .map((task) => task.pin_color),
+    ).toEqual(["olive", "berry", "sage", "slate", "cream"]);
+  });
+  it("places newly created tasks before existing siblings", async () => {
+    const gateway = createGateway("local");
+    await gateway.create(input);
+    await gateway.create({
+      ...input,
+      id: crypto.randomUUID(),
+      title: "New first task",
+    });
+
+    const tasks = (await gateway.list()).tasks.sort((a, b) =>
+      a.rank.localeCompare(b.rank),
+    );
+    expect(tasks.map((task) => task.title)).toEqual([
+      "New first task",
+      input.title,
+    ]);
+  });
   it("surfaces storage quota failures", async () => {
     vi.stubGlobal("localStorage", {
       getItem: () => null,
@@ -110,7 +158,7 @@ describe("subtask persistence", () => {
     id: "d2e80888-53ec-419d-aea0-54beb67d77b3",
     title: "Smaller step",
     notes: "Keep these details",
-    starred: true,
+    pinned: true,
   });
   it("creates subtasks and preserves the relationship after reload", async () => {
     const gateway = createGateway("local");
@@ -130,7 +178,7 @@ describe("subtask persistence", () => {
     expect(moved).toMatchObject({
       title: original.title,
       notes: original.notes,
-      starred: true,
+      pinned: true,
       parent_id: input.id,
     });
     expect(

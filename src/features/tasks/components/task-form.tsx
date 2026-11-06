@@ -1,7 +1,7 @@
 "use client";
 import formStyles from "./task-form.module.css";
 import fieldsStyles from "@/components/ui/fields.module.css";
-import { CalendarDays, ExternalLink, Star, Sun, Unlink } from "lucide-react";
+import { CalendarDays, ExternalLink, Pin, Star, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChoiceMenu } from "@/components/ui/choice-menu";
 import {
@@ -126,11 +126,11 @@ export function TaskForm({
         <label>
           <input
             type="checkbox"
-            checked={values.starred}
-            onChange={(event) => change("starred", event.target.checked)}
+            checked={values.pinned}
+            onChange={(event) => change("pinned", event.target.checked)}
             disabled={busy}
           />
-          <Star size={15} /> Important
+          <Pin size={15} /> Pinned
         </label>
         <div className={formStyles["focus-actions"]}>
           <label>
@@ -140,7 +140,11 @@ export function TaskForm({
               onChange={(event) => change("focus_today", event.target.checked)}
               disabled={busy}
             />
-            <Sun size={15} /> Focus today
+            <Star
+              size={15}
+              fill={values.focus_today ? "currentColor" : "none"}
+            />{" "}
+            Focus today
           </label>
           {onMoveToMainList && (
             <Button

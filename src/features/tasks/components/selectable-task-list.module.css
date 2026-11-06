@@ -42,6 +42,11 @@
 .standalone {
   padding-block: 8px 12px;
 }
+.dragging-list,
+.dragging-list * {
+  cursor: grabbing !important;
+  user-select: none;
+}
 @media (max-width: 700px) {
   .main .toolbar {
     margin-inline: 18px;

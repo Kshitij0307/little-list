@@ -1,6 +1,12 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 import { ListChecks, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChoiceMenu } from "@/components/ui/choice-menu";
@@ -62,6 +68,7 @@ export function SelectableTaskList({
   children,
   selection,
   externalTrigger = false,
+  reorderEnabled = true,
 }: {
   tasks: Task[];
   status: TaskStatus;
@@ -71,13 +78,152 @@ export function SelectableTaskList({
   children: ReactNode;
   selection: TaskSelection;
   externalTrigger?: boolean;
+  reorderEnabled?: boolean;
 }) {
-  const { busy, update, move, remove } = useTaskContext();
+  const { busy, update, move, remove, reorder } = useTaskContext();
   const { active, ids, selected, allSelected, target, chooseTarget } =
     selection;
   const [pending, setPending] = useState<"move" | "delete" | null>(null);
   const container = useRef<HTMLDivElement>(null);
+  const drag = useRef<{
+    id: string;
+    pointerId: number;
+    pointerType: string;
+    startX: number;
+    startY: number;
+    centerOffsetY: number;
+    active: boolean;
+    timer: ReturnType<typeof setTimeout> | null;
+    positions: { id: string; top: number; height: number }[];
+  } | null>(null);
+  const drop = useRef<{ position: number } | null>(null);
+  const suppressClick = useRef(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOffsetY, setDragOffsetY] = useState(0);
+  const [settledId, setSettledId] = useState<string | null>(null);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [dropPosition, setDropPosition] = useState<number | null>(null);
   const idPrefix = parentId ? "subtask" : "task";
+
+  useEffect(
+    () => () => {
+      if (drag.current?.timer) clearTimeout(drag.current.timer);
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+    },
+    [],
+  );
+
+  function resetDrag() {
+    if (drag.current?.timer) clearTimeout(drag.current.timer);
+    drag.current = null;
+    drop.current = null;
+    setDraggingId(null);
+    setDragOffsetY(0);
+    setDropPosition(null);
+  }
+
+  function snapshotPositions(id: string) {
+    const dragged = tasks.find((task) => task.id === id);
+    if (!dragged) return [];
+    return tasks
+      .filter((task) => task.id !== id && task.pinned === dragged.pinned)
+      .flatMap((task) => {
+        const row = document.querySelector<HTMLElement>(
+          `[data-task-id="${task.id}"]`,
+        );
+        if (!row) return [];
+        const rect = row.getBoundingClientRect();
+        return [
+          {
+            id: task.id,
+            top: rect.top + window.scrollY,
+            height: rect.height,
+          },
+        ];
+      });
+  }
+
+  function savePosition(id: string, position: number) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return false;
+    const group = tasks.filter((item) => item.pinned === task.pinned);
+    const source = group.findIndex((item) => item.id === id);
+    const ordered = group.filter((item) => item.id !== id);
+    if (source < 0 || position === source) return false;
+    ordered.splice(position, 0, task);
+    const index = ordered.findIndex((item) => item.id === id);
+    void reorder({
+      id,
+      before_id: ordered[index - 1]?.id ?? null,
+      after_id: ordered[index + 1]?.id ?? null,
+      status,
+      parent_id: parentId,
+      pinned: task.pinned,
+    });
+    return true;
+  }
+
+  function moveByKey(id: string, key: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const group = tasks.filter((item) => item.pinned === task.pinned);
+    const index = group.findIndex((item) => item.id === id);
+    const target = index + (key === "ArrowUp" ? -1 : 1);
+    if (target < 0 || target >= group.length) return;
+    savePosition(id, target);
+  }
+
+  function trackPointer(event: PointerEvent<HTMLUListElement>) {
+    if (!drag.current || drag.current.pointerId !== event.pointerId) return;
+    const distance = Math.hypot(
+      event.clientX - drag.current.startX,
+      event.clientY - drag.current.startY,
+    );
+    if (!drag.current.active) {
+      if (drag.current.pointerType === "touch") {
+        if (distance > 8) resetDrag();
+        return;
+      }
+      if (distance < 4) return;
+      drag.current.positions = snapshotPositions(drag.current.id);
+      drag.current.active = true;
+      suppressClick.current = true;
+      setDraggingId(drag.current.id);
+    }
+    setDragOffsetY(event.clientY - drag.current.startY);
+    if (event.clientY < 64) window.scrollBy(0, -14);
+    else if (event.clientY > window.innerHeight - 64) window.scrollBy(0, 14);
+    const draggedCenterY =
+      event.clientY + window.scrollY + drag.current.centerOffsetY;
+    if (!drag.current.positions.length) {
+      drop.current = null;
+      setDropPosition(null);
+      return;
+    }
+    const position = drag.current.positions.filter(
+      (item) => draggedCenterY >= item.top + item.height / 2,
+    ).length;
+    drop.current = { position };
+    setDropPosition(position);
+  }
+
+  function finishDrag(event: PointerEvent<HTMLUListElement>) {
+    if (!drag.current || drag.current.pointerId !== event.pointerId) return;
+    if (drag.current.active && drop.current) {
+      if (savePosition(drag.current.id, drop.current.position)) {
+        setSettledId(drag.current.id);
+        if (settleTimer.current) clearTimeout(settleTimer.current);
+        settleTimer.current = setTimeout(() => {
+          setSettledId(null);
+          settleTimer.current = null;
+        }, 480);
+      }
+    }
+    resetDrag();
+    setTimeout(() => {
+      suppressClick.current = false;
+    }, 0);
+  }
   function finish() {
     if (!container.current) return;
     selection.clear();
@@ -113,6 +259,30 @@ export function SelectableTaskList({
       setPending(null);
     }
   }
+  const draggedTask = draggingId
+    ? tasks.find((task) => task.id === draggingId)
+    : undefined;
+  const dragGroup = draggedTask
+    ? tasks.filter((task) => task.pinned === draggedTask.pinned)
+    : [];
+  const draggingIndex = draggedTask
+    ? dragGroup.findIndex((task) => task.id === draggedTask.id)
+    : -1;
+  const remainingDragGroup = dragGroup.filter((task) => task.id !== draggingId);
+  const indicatorTarget =
+    dropPosition === null
+      ? null
+      : dropPosition < remainingDragGroup.length
+        ? {
+            id: remainingDragGroup[dropPosition].id,
+            position: "before" as const,
+          }
+        : remainingDragGroup.length
+          ? {
+              id: remainingDragGroup.at(-1)!.id,
+              position: "after" as const,
+            }
+          : null;
   return (
     <div ref={container} className={parentId ? undefined : styles.main}>
       {active ? (
@@ -193,27 +363,122 @@ export function SelectableTaskList({
         )
       )}
       {tasks.length ? (
-        <ul className={className}>
-          {tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              busy={busy}
-              onEdit={() => onOpenTask(task.id)}
-              onUpdate={(patch, label) => void update(task.id, patch, label)}
-              selection={
-                active
-                  ? {
-                      selected: ids.includes(task.id),
-                      disabled:
-                        !ids.includes(task.id) &&
-                        selected.length >= MAX_BATCH_TASKS,
-                      toggle: () => selection.toggle(task.id),
-                    }
-                  : undefined
-              }
-            />
-          ))}
+        <ul
+          className={[className, draggingId && styles["dragging-list"]]
+            .filter(Boolean)
+            .join(" ")}
+          onPointerMove={trackPointer}
+          onPointerUp={finishDrag}
+          onPointerCancel={() => {
+            resetDrag();
+            suppressClick.current = false;
+          }}
+        >
+          {tasks.map((task) => {
+            const taskDragIndex = dragGroup.findIndex(
+              (item) => item.id === task.id,
+            );
+            return (
+              <TaskRow
+                key={task.id}
+                task={task}
+                busy={busy}
+                onEdit={() => onOpenTask(task.id)}
+                onUpdate={(patch, label) => void update(task.id, patch, label)}
+                selection={
+                  active
+                    ? {
+                        selected: ids.includes(task.id),
+                        disabled:
+                          !ids.includes(task.id) &&
+                          selected.length >= MAX_BATCH_TASKS,
+                        toggle: () => selection.toggle(task.id),
+                      }
+                    : undefined
+                }
+                dragging={draggingId === task.id}
+                dragOffsetY={draggingId === task.id ? dragOffsetY : 0}
+                justDropped={settledId === task.id}
+                dropPosition={
+                  indicatorTarget?.id === task.id
+                    ? indicatorTarget.position
+                    : undefined
+                }
+                shiftDirection={
+                  draggingIndex >= 0 &&
+                  dropPosition !== null &&
+                  dropPosition > draggingIndex &&
+                  taskDragIndex > draggingIndex &&
+                  taskDragIndex <= dropPosition
+                    ? "up"
+                    : draggingIndex >= 0 &&
+                        dropPosition !== null &&
+                        dropPosition < draggingIndex &&
+                        taskDragIndex >= dropPosition &&
+                        taskDragIndex < draggingIndex
+                      ? "down"
+                      : undefined
+                }
+                reorderInteraction={
+                  reorderEnabled &&
+                  !active &&
+                  tasks.filter((item) => item.pinned === task.pinned).length > 1
+                    ? {
+                        onPointerDown: (event) => {
+                          if (busy || event.button !== 0) return;
+                          const rowRect = event.currentTarget
+                            .closest("[data-task-row]")
+                            ?.getBoundingClientRect();
+                          const activate = () => {
+                            if (!drag.current) return;
+                            drag.current.positions = snapshotPositions(task.id);
+                            drag.current.active = true;
+                            drag.current.timer = null;
+                            suppressClick.current = true;
+                            setDraggingId(task.id);
+                          };
+                          drag.current = {
+                            id: task.id,
+                            pointerId: event.pointerId,
+                            pointerType: event.pointerType,
+                            startX: event.clientX,
+                            startY: event.clientY,
+                            centerOffsetY:
+                              (rowRect?.top ?? event.clientY) +
+                              (rowRect?.height ?? 0) / 2 -
+                              event.clientY,
+                            active: false,
+                            positions: [],
+                            timer:
+                              event.pointerType === "touch"
+                                ? setTimeout(activate, 360)
+                                : null,
+                          };
+                          event.currentTarget.setPointerCapture(
+                            event.pointerId,
+                          );
+                        },
+                        onKeyDown: (event) => {
+                          if (
+                            busy ||
+                            !event.altKey ||
+                            !["ArrowUp", "ArrowDown"].includes(event.key)
+                          )
+                            return;
+                          event.preventDefault();
+                          moveByKey(task.id, event.key);
+                        },
+                        consumeClick: () => {
+                          if (!suppressClick.current) return false;
+                          suppressClick.current = false;
+                          return true;
+                        },
+                      }
+                    : undefined
+                }
+              />
+            );
+          })}
         </ul>
       ) : (
         children

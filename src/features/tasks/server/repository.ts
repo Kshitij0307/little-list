@@ -17,9 +17,27 @@ import {
   taskDeletionSchema,
   type TaskDeletion,
 } from "../domain/task-batch";
+import { taskRankMoveSchema, type TaskRankMove } from "../domain/task-rank";
 
 export class TaskRepositoryError extends Error {}
 export class TaskConflictError extends Error {}
+
+export async function reorderTask(input: TaskRankMove) {
+  const move = taskRankMoveSchema.parse(input);
+  const { client } = await requireTaskSession();
+  const { data, error } = await client.rpc("move_task_rank", {
+    task_id: move.id,
+    before_id: move.before_id,
+    after_id: move.after_id,
+    destination_status: move.status,
+    destination_parent_id: move.parent_id,
+    destination_pinned: move.pinned,
+  });
+  if (error?.code === "23514")
+    throw new TaskConflictError("The list changed. Refresh and try again.");
+  if (error) throw new TaskRepositoryError("Unable to save the task order.");
+  return taskSchema.parse(data);
+}
 
 export async function deleteTasks(input: TaskDeletion) {
   const deletion = taskDeletionSchema.parse(input);

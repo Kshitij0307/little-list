@@ -27,7 +27,7 @@ describe("task lifecycle", () => {
       notes: "",
       due_date: null,
       completed_at: null,
-      starred: false,
+      pinned: false,
     });
   });
   it("allows direct completion, preserves completion time on edits, and clears it on reopening", () => {
@@ -86,23 +86,23 @@ describe("task lifecycle", () => {
       }).success,
     ).toBe(true);
   });
-  it("puts important active tasks first and recent completions first", () => {
+  it("puts pinned tasks first and then follows their saved rank", () => {
     const plain = makeTask(input, first);
-    const starred = {
+    const pinned = {
       ...plain,
       id: "d2e80888-53ec-419d-aea0-54beb67d77b3",
-      starred: true,
+      pinned: true,
     };
-    expect(sortTasks([plain, starred], "todo")[0].id).toBe(starred.id);
+    expect(sortTasks([plain, pinned], "todo")[0].id).toBe(pinned.id);
     expect(
       sortTasks(
         [
           { ...plain, completed_at: first },
-          { ...starred, completed_at: later },
+          { ...pinned, completed_at: later },
         ],
         "done",
       )[0].id,
-    ).toBe(starred.id);
+    ).toBe(pinned.id);
   });
 });
 

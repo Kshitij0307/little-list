@@ -9,6 +9,7 @@ import { NotebookNotice } from "@/components/notebook-notice";
 import { Button } from "@/components/ui/button";
 import { useTaskContext } from "../hooks/tasks-provider";
 import { TaskForm } from "./task-form";
+import { TaskDetailPanels } from "./task-detail-panels";
 import { SubtaskSection } from "./subtask-section";
 import { TaskErrorBanner } from "./task-error-banner";
 export function TaskDetail({ taskId }: { taskId: string }) {
@@ -68,29 +69,33 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           Shape the task, then move each smaller step at its own pace.
         </p>
       </header>
-      <div className={detailStyles["task-detail-content"]}>
-        <TaskForm
-          key={`form-${task.id}`}
-          task={task}
-          busy={busy}
-          onSave={(patch) => update(task.id, patch)}
-          onMoveToMainList={
-            task.parent_id
-              ? () =>
-                  update(
-                    task.id,
-                    { parent_id: null },
-                    "Subtask moved to main list",
-                  )
-              : undefined
-          }
-        />
-        <SubtaskSection
-          key={`subtasks-${task.id}`}
-          taskId={task.id}
-          onOpenTask={(id) => router.push(`/tasks/${id}`)}
-        />
-      </div>
+      <TaskDetailPanels
+        details={
+          <TaskForm
+            key={`form-${task.id}`}
+            task={task}
+            busy={busy}
+            onSave={(patch) => update(task.id, patch)}
+            onMoveToMainList={
+              task.parent_id
+                ? () =>
+                    update(
+                      task.id,
+                      { parent_id: null },
+                      "Subtask moved to main list",
+                    )
+                : undefined
+            }
+          />
+        }
+        subtasks={
+          <SubtaskSection
+            key={`subtasks-${task.id}`}
+            taskId={task.id}
+            onOpenTask={(id) => router.push(`/tasks/${id}`)}
+          />
+        }
+      />
     </div>
   );
 }

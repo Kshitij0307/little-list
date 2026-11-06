@@ -44,16 +44,54 @@
 }
 .task-detail-content {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr);
+  grid-template-columns:
+    clamp(320px, var(--details-width), calc(100% - 332px)) 12px
+    minmax(0, 1fr);
+}
+.details-panel,
+.subtasks-panel {
+  min-width: 0;
+}
+.panel-divider {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  cursor: col-resize;
+  touch-action: none;
+  background: var(--surface);
+  border-inline: 1px solid var(--line);
+  color: var(--subtle);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.panel-divider:hover,
+.panel-divider:focus-visible {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.divider-grip {
+  position: sticky;
+  top: 35vh;
+  margin-top: 120px;
+  width: 4px;
+  height: 34px;
+  border-left: 1px solid currentColor;
+  border-right: 1px solid currentColor;
+  border-radius: 3px;
 }
 .task-detail [data-subtasks] {
   padding: 28px;
-  border-left: 1px solid var(--line);
   background: color-mix(in srgb, var(--background) 25%, var(--surface));
 }
 @media (max-width: 900px) {
   .task-detail-content {
     grid-template-columns: 1fr;
+  }
+  .panel-divider {
+    display: none;
   }
   .task-detail [data-subtasks] {
     border-top: 1px solid var(--line);

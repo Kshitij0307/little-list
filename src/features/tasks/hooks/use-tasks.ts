@@ -6,6 +6,7 @@ import {
   applyTaskPatch,
   createTaskSchema,
   makeTask,
+  sortTasks,
   validateTaskParent,
   type Task,
   type TaskPatch,
@@ -18,11 +19,17 @@ import {
   taskDeletionSchema,
   type TaskDeletion,
 } from "../domain/task-batch";
+import {
+  applyLocalRankMove,
+  rankBetween,
+  type TaskRankMove,
+} from "../domain/task-rank";
 
 type UndoAction = { label: string } & (
   | { id: string; patch: TaskPatch }
   | { move: TaskMove }
   | { deletion: TaskDeletion; tasks: Task[] }
+  | { reorder: TaskRankMove }
 );
 export type InitialTaskState = { tasks: Task[] } | { error: string };
 const errorMessage = (value: unknown) =>
@@ -135,7 +142,20 @@ export function useTasks(
         parent_id: parentId,
       });
       validateTaskParent(tasks, input.id, input.parent_id);
-      setTasks((items) => [...items, makeTask(input)]);
+      const first = tasks
+        .filter(
+          (task) =>
+            !task.deleted_at &&
+            task.parent_id === input.parent_id &&
+            task.status === input.status &&
+            task.pinned === input.pinned,
+        )
+        .sort((a, b) => a.rank.localeCompare(b.rank))
+        .at(0);
+      setTasks((items) => [
+        ...items,
+        makeTask(input, undefined, rankBetween(null, first?.rank ?? null)),
+      ]);
       const saved = await gateway.create(input);
       setTasks((items) =>
         items.map((task) => (task.id === saved.id ? saved : task)),
@@ -246,6 +266,33 @@ export function useTasks(
           };
     });
 
+  const reorder = (input: TaskRankMove, undoing = false) =>
+    mutate(async () => {
+      const ordered = sortTasks(
+        tasks.filter(
+          (task) =>
+            task.status === input.status &&
+            task.parent_id === input.parent_id &&
+            task.pinned === input.pinned &&
+            !task.deleted_at,
+        ),
+        input.status,
+      );
+      const index = ordered.findIndex((task) => task.id === input.id);
+      if (index < 0) throw new Error("Task not found. Refresh your list.");
+      const reverse: TaskRankMove = {
+        ...input,
+        before_id: ordered[index - 1]?.id ?? null,
+        after_id: ordered[index + 1]?.id ?? null,
+      };
+      setTasks(applyLocalRankMove(tasks, input).tasks);
+      const saved = await gateway.reorder(input);
+      setTasks((items) =>
+        items.map((task) => (task.id === saved.id ? saved : task)),
+      );
+      return undoing ? null : { label: "Task reordered", reorder: reverse };
+    });
+
   return {
     tasks,
     loading,
@@ -257,14 +304,17 @@ export function useTasks(
     update,
     move,
     remove,
+    reorder,
     undoAction,
     undo: () =>
       undoAction
         ? "deletion" in undoAction
           ? remove(undoAction.deletion, undoAction.tasks)
-          : "move" in undoAction
-            ? move(undoAction.move, true)
-            : update(undoAction.id, undoAction.patch, "Undone", true)
+          : "reorder" in undoAction
+            ? reorder(undoAction.reorder, true)
+            : "move" in undoAction
+              ? move(undoAction.move, true)
+              : update(undoAction.id, undoAction.patch, "Undone", true)
         : Promise.resolve(false),
     dismissUndo: () => setUndoAction(null),
   };
