@@ -15,6 +15,8 @@
   color: var(--muted);
   font-size: 13px;
   white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .status-tab:hover {
   background: var(--surface-alt);

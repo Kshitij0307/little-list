@@ -11,6 +11,8 @@
     box-shadow 180ms ease,
     background 180ms ease;
   will-change: transform;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .dragging {

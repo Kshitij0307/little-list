@@ -190,6 +190,7 @@ export function SelectableTaskList({
       suppressClick.current = true;
       setDraggingId(drag.current.id);
     }
+    if (drag.current.pointerType === "touch") event.preventDefault();
     setDragOffsetY(event.clientY - drag.current.startY);
     if (event.clientY < 64) window.scrollBy(0, -14);
     else if (event.clientY > window.innerHeight - 64) window.scrollBy(0, 14);

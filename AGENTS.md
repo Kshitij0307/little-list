@@ -33,6 +33,7 @@
 
 - Proactively check interaction quality when adding or changing UI; do not wait for the user to report inconsistencies. Review related uses of a shared component, including main tasks and subtasks, and fix the shared cause where possible.
 - Match cursor feedback to actual behavior: enabled clickable controls and checkbox labels should show a hand cursor; disabled controls should show an unavailable cursor and must not respond or display active hover styling. Keep text-entry cursors on editable text fields. Do not make non-clickable row spacing look clickable.
+- Touch drag surfaces must disable native text selection for the full interaction area, including nearby tab labels, and prevent the browser's selection behavior once a touch drag is active.
 - Give task-opening areas useful hit areas and restrained theme-based hover feedback. Preserve visible keyboard focus and keyboard activation. Keep completion, star, detach, and menu actions independent so using them cannot accidentally open the task.
 - In dense interactive rows, keep descriptive content in a `min-width: 0` flexible section and controls in a non-shrinking section. Clamp long copy with an ellipsis before it can move or overlap the controls; preserve enough lines for the content to remain useful.
 - Use touch targets of at least 44 by 44 CSS pixels for small controls on touch layouts. Expand the button or associated label rather than enlarging its icon. Check completed and disabled controls too, and verify that actions fit at narrow phone widths without horizontal overflow.
