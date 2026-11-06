@@ -29,6 +29,9 @@
 - Unknown-error pages must also render as standalone page states without the notebook workspace shell or its save and sync footer.
 - Keep expected form, save, and connection failures close to the affected content with useful recovery actions and preserved drafts. Use the full-page unknown-error treatment when the page cannot continue; do not replace a usable editor with it for a routine failed operation.
 - Design for phone and laptop together. Prefer simple layouts that reflow naturally, keep touch targets and keyboard focus clear, maintain readable contrast in both themes, and avoid forced split layouts or visual changes that disrupt existing navigation and editing behavior.
+- Size split detail panels and form grids from their available container width, not only the viewport.
+- Make shared controls inside resizable or scroll-constrained surfaces respond to their rendered container width. Verify minimum and maximum split-panel sizes plus representative 320px, 360px, 390px, and 430px phone widths; include scrollbar-reduced content widths and avoid separate phone-only copies of the same layout rule.
+- On notebook surfaces with a ruled paper margin, reserve `--paper-margin` before applying the component’s own content padding. Align related headers and panels to the same calculated inset so content does not sit against the ruled line at any responsive width.
 - Keep these approved patterns consistent as the app evolves. Inspect the existing shared components before adding new loading, error, or missing-page treatments. Present proposed visual changes for review when the user asks for designs before implementation.
 
 ## Interaction quality and regression prevention

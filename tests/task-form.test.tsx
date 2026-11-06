@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { TaskForm } from "../src/features/tasks/components/task-form";
 import { createTaskSchema, makeTask } from "../src/features/tasks/domain/task";
@@ -162,12 +163,15 @@ it("sends an explicit null when clearing an existing due date", async () => {
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({ due_date: null }));
 });
 
-it("shows the move-to-main-list action only when it is available", () => {
+it("keeps task options in one responsive group and shows move-to-main-list only when available", () => {
   const onSave = vi.fn();
   const onMoveToMainList = vi.fn().mockResolvedValue(true);
   const view = render(<TaskForm task={task} busy={false} onSave={onSave} />);
+  const options = screen.getByRole("group", { name: "Task options" });
+  expect(within(options).getByLabelText("Pinned")).toBeTruthy();
+  expect(within(options).getByLabelText("Focus today")).toBeTruthy();
   expect(
-    screen.queryByRole("button", { name: "Move to main list" }),
+    within(options).queryByRole("button", { name: "Move to main list" }),
   ).toBeNull();
 
   view.rerender(
@@ -178,7 +182,10 @@ it("shows the move-to-main-list action only when it is available", () => {
       onMoveToMainList={onMoveToMainList}
     />,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Move to main list" }));
+  const moveButton = within(options).getByRole("button", {
+    name: "Move to main list",
+  });
+  fireEvent.click(moveButton);
   expect(onMoveToMainList).toHaveBeenCalledOnce();
 });
 

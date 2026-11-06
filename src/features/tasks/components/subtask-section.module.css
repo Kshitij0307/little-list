@@ -1,5 +1,6 @@
 .subtasks-section {
   min-width: 0;
+  container: subtasks-section / inline-size;
 }
 .subtasks-heading {
   display: flex;
@@ -49,15 +50,6 @@ ul.subtask-list {
   padding-bottom: 13px;
   border-bottom: 1px solid var(--line);
 }
-.subtask-controls [role="tablist"] {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 1fr 1.35fr 1fr;
-}
-.subtask-controls [role="tab"] {
-  min-width: 0;
-  padding-inline: 8px;
-}
 .subtask-controls > p {
   margin: 11px 2px 0;
   color: var(--muted);
@@ -91,14 +83,9 @@ ul.subtask-list {
   padding-top: 19px;
   border-top: 1px solid var(--line);
 }
-@media (max-width: 480px) {
+@container subtasks-section (max-width: 480px) {
   .subtask-input-row {
     gap: 6px;
-  }
-  .subtask-controls [role="tab"] {
-    font-size: var(--text-caption);
-    gap: 4px;
-    padding-inline: 4px;
   }
   .subtask-panel [data-advance] {
     width: 44px;

@@ -1,3 +1,6 @@
+.container {
+  container: task-list / inline-size;
+}
 .toolbar {
   margin: 10px 0 16px;
   padding: 12px;
@@ -47,12 +50,12 @@
   cursor: grabbing !important;
   user-select: none;
 }
-@media (max-width: 700px) {
+@container task-list (max-width: 700px) {
   .main .toolbar {
     margin-inline: 18px;
   }
 }
-@media (max-width: 600px) {
+@container task-list (max-width: 600px) {
   .actions {
     grid-template-columns: minmax(0, 1fr) auto;
   }
@@ -60,7 +63,7 @@
     grid-column: 1 / -1;
   }
 }
-@media (max-width: 480px) {
+@container task-list (max-width: 480px) {
   .main .toolbar {
     margin-inline: 15px;
   }

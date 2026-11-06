@@ -1,3 +1,9 @@
+.status-tabs-container {
+  container: status-tabs / inline-size;
+  flex: 1 1 280px;
+  min-width: min(280px, 100%);
+  max-width: 100%;
+}
 .status-tabs {
   display: flex;
   align-items: center;
@@ -7,6 +13,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 0;
   gap: 8px;
   padding: 9px 14px;
   background: transparent;
@@ -44,15 +51,12 @@
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent);
 }
-@media (max-width: 700px) {
-  .status-tabs {
-    flex: 1;
-  }
+@container status-tabs (max-width: 700px) {
   .status-tab {
     padding: 9px 10px;
   }
 }
-@media (max-width: 480px) {
+@container status-tabs (max-width: 480px) {
   .status-tabs {
     width: 100%;
     display: grid;
@@ -63,5 +67,12 @@
     gap: 6px;
     padding: 10px 6px;
     min-height: 44px;
+  }
+}
+@container status-tabs (max-width: 360px) {
+  .status-tab {
+    gap: 4px;
+    padding-inline: 4px;
+    font-size: var(--text-caption);
   }
 }

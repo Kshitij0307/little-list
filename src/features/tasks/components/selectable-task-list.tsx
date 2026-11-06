@@ -300,7 +300,12 @@ export function SelectableTaskList({
             }
           : null;
   return (
-    <div ref={container} className={parentId ? undefined : styles.main}>
+    <div
+      ref={container}
+      className={[styles.container, !parentId && styles.main]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {active ? (
         <div className={styles.toolbar}>
           <div className={styles.summary}>

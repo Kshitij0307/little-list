@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  container: task-form / inline-size;
 }
 .saved-link {
   min-width: 0;
@@ -28,17 +29,21 @@
 .editor-grid label {
   margin-bottom: 10px;
 }
+.editor-grid > div:last-child {
+  min-width: 0;
+}
 .editor-toggles {
   display: flex;
-  flex-wrap: nowrap;
   align-items: center;
-  gap: 12px;
+  justify-content: space-around;
+  gap: 12px 24px;
   margin: 13px 0;
 }
 .editor-toggles label {
   display: flex;
   align-items: center;
   gap: 7px;
+  min-height: 44px;
   color: var(--muted);
   font-size: var(--text-small);
   cursor: pointer;
@@ -52,16 +57,9 @@
   cursor: not-allowed;
   opacity: 0.5;
 }
-.focus-actions {
-  display: contents;
-}
 .editor-toggles .move-main-button {
+  flex: 0 0 auto;
   min-height: 44px;
-}
-@media (pointer: coarse), (max-width: 480px) {
-  .editor-toggles label {
-    min-height: 44px;
-  }
 }
 .editor-footer {
   display: flex;
@@ -70,28 +68,25 @@
   gap: 8px;
   margin-top: 8px;
 }
-@media (max-width: 480px) {
+@container task-form (max-width: 560px) {
   .editor-grid {
+    grid-template-columns: 1fr;
     gap: 10px;
   }
   .editor-toggles {
-    flex-wrap: wrap;
-    row-gap: 4px;
-    justify-content: space-around;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-items: center;
+    gap: 4px 12px;
   }
   .editor-toggles .move-main-button {
-    margin-left: auto;
-    margin-right: auto;
+    grid-column: 1 / -1;
+    justify-self: center;
   }
 }
 .editor-form {
   padding: 28px;
   align-content: start;
-}
-@media (max-width: 360px) {
-  .editor-grid {
-    grid-template-columns: 1fr;
-  }
 }
 .editor-form > h3 {
   margin: 0 0 4px;
@@ -102,7 +97,7 @@
   color: var(--accent);
   font-size: var(--text-caption);
 }
-@media (max-width: 480px) {
+@container details-panel (max-width: 480px) {
   .editor-form {
     padding: 22px 15px;
   }

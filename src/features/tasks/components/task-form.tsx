@@ -122,7 +122,11 @@ export function TaskForm({
           />
         </div>
       </div>
-      <div className={formStyles["editor-toggles"]}>
+      <div
+        className={formStyles["editor-toggles"]}
+        role="group"
+        aria-label="Task options"
+      >
         <label>
           <input
             type="checkbox"
@@ -132,37 +136,32 @@ export function TaskForm({
           />
           <Pin size={15} /> Pinned
         </label>
-        <div className={formStyles["focus-actions"]}>
-          <label>
-            <input
-              type="checkbox"
-              checked={values.focus_today}
-              onChange={(event) => change("focus_today", event.target.checked)}
-              disabled={busy}
-            />
-            <Star
-              size={15}
-              fill={values.focus_today ? "currentColor" : "none"}
-            />{" "}
-            Focus today
-          </label>
-          {onMoveToMainList && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className={formStyles["move-main-button"]}
-              aria-label="Move to main list"
-              disabled={busy}
-              onClick={() => void onMoveToMainList()}
-            >
-              <Unlink size={15} />
-              <span className={formStyles["move-main-label"]}>
-                Move to main list
-              </span>
-            </Button>
-          )}
-        </div>
+        <label>
+          <input
+            type="checkbox"
+            checked={values.focus_today}
+            onChange={(event) => change("focus_today", event.target.checked)}
+            disabled={busy}
+          />
+          <Star size={15} fill={values.focus_today ? "currentColor" : "none"} />{" "}
+          Focus today
+        </label>
+        {onMoveToMainList && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className={formStyles["move-main-button"]}
+            aria-label="Move to main list"
+            disabled={busy}
+            onClick={() => void onMoveToMainList()}
+          >
+            <Unlink size={15} />
+            <span className={formStyles["move-main-label"]}>
+              Move to main list
+            </span>
+          </Button>
+        )}
       </div>
       {validationError && (
         <p className={fieldsStyles["form-error"]} role="alert">
