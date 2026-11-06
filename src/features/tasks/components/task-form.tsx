@@ -108,12 +108,15 @@ export function TaskForm({
             }))}
           />
         </div>
-        <div>
+        <div className={formStyles["due-date-field"]}>
           <label className={fieldsStyles["field-label"]} htmlFor="task-due">
             <CalendarDays size={14} /> Due date
           </label>
           <input
-            className={fieldsStyles["field"]}
+            className={[
+              fieldsStyles["field"],
+              formStyles["due-date-input"],
+            ].join(" ")}
             id="task-due"
             type="date"
             value={values.due_date}

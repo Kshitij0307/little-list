@@ -32,6 +32,16 @@
 .editor-grid > div:last-child {
   min-width: 0;
 }
+.due-date-field {
+  width: 100%;
+  min-width: 0;
+}
+.due-date-input {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
 .editor-toggles {
   display: flex;
   align-items: center;
@@ -64,7 +74,8 @@
 .editor-footer {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
 }
@@ -93,7 +104,6 @@
   font-size: var(--text-section);
 }
 .inline-save-note {
-  margin-right: auto;
   color: var(--accent);
   font-size: var(--text-caption);
 }

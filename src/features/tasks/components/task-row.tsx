@@ -23,18 +23,9 @@ import {
   localDate,
   STATUS_LABELS,
   STATUSES,
-  type PinColor,
   type Task,
   type TaskPatch,
 } from "../domain/task";
-
-const pinColorClasses: Record<PinColor, string> = {
-  olive: rowStyles["pin-olive"],
-  berry: rowStyles["pin-berry"],
-  sage: rowStyles["pin-sage"],
-  slate: rowStyles["pin-slate"],
-  cream: rowStyles["pin-cream"],
-};
 
 export function TaskRow({
   task,
@@ -125,14 +116,13 @@ export function TaskRow({
           <span
             className={cn(
               rowStyles["pin-marker"],
-              pinColorClasses[task.pin_color ?? "olive"],
               task.pinned && rowStyles.visible,
             )}
             role={task.pinned ? "img" : undefined}
             aria-label={task.pinned ? "Pinned" : undefined}
             aria-hidden={task.pinned ? undefined : "true"}
           >
-            <Pin size={13} fill="currentColor" />
+            <Pin size={25} strokeWidth={1} aria-hidden="true" />
           </span>
           <button
             className={rowStyles["task-check"]}

@@ -8,10 +8,6 @@ export const STATUS_LABELS: Record<TaskStatus, string> = {
   in_progress: "In progress",
   done: "Done",
 };
-export const PIN_COLORS = ["olive", "berry", "sage", "slate", "cream"] as const;
-export const pinColorSchema = z.enum(PIN_COLORS);
-export type PinColor = (typeof PIN_COLORS)[number];
-
 const dateOnly = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -76,7 +72,6 @@ export const updateTaskSchema = editableTaskSchema
 export const taskSchema = taskFieldsSchema.extend({
   id: z.uuid(),
   parent_id: z.uuid().nullable().default(null),
-  pin_color: pinColorSchema.nullable().default(null),
   rank: taskRankSchema,
   created_at: z.iso.datetime({ offset: true }),
   updated_at: z.iso.datetime({ offset: true }),
@@ -98,7 +93,6 @@ export function makeTask(
     updated_at: now,
     completed_at: input.status === "done" ? now : null,
     deleted_at: null,
-    pin_color: null,
     rank,
   };
 }

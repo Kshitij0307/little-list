@@ -212,7 +212,7 @@ describe("shared task controls", () => {
     ).toBeNull();
   });
 
-  it("shows a diagonal pin marker above the completion control for pinned tasks", () => {
+  it("shows the outline pin marker above the completion control for pinned tasks", () => {
     render(
       <ul>
         <TaskRow
@@ -228,6 +228,7 @@ describe("shared task controls", () => {
       name: `Complete ${task.title}`,
     });
     expect(marker.parentElement?.contains(completion)).toBe(true);
+    expect(marker.querySelector("svg")).not.toBeNull();
     expect(
       screen.queryByRole("button", { name: `Unpin ${task.title}` }),
     ).toBeNull();

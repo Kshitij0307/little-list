@@ -56,23 +56,20 @@ describe("storage adapters", () => {
     expect(task).toMatchObject({ pinned: true });
     expect(task.rank).toMatch(/^[0-9a-z]{12}$/);
   });
-  it("assigns the selected pin colors in order for local pins", async () => {
-    const gateway = createGateway("local");
-    const colors = ["olive", "berry", "sage", "slate", "cream"];
-    for (const [index] of colors.entries()) {
-      await gateway.create({
-        ...input,
-        id: crypto.randomUUID(),
-        title: `Pinned ${index}`,
-        pinned: true,
-      });
-    }
+  it("removes obsolete pin colors from previously saved local tasks", async () => {
+    const oldTask = {
+      ...makeTask({ ...input, pinned: true }),
+      pin_color: "berry",
+    };
+    values.set("little-list.tasks.v1", JSON.stringify([oldTask]));
+
+    const [task] = (await createGateway("local").list()).tasks;
+
+    expect(task.pinned).toBe(true);
+    expect(task).not.toHaveProperty("pin_color");
     expect(
-      (await gateway.list()).tasks
-        .filter((task) => task.pinned)
-        .sort((a, b) => a.title.localeCompare(b.title))
-        .map((task) => task.pin_color),
-    ).toEqual(["olive", "berry", "sage", "slate", "cream"]);
+      JSON.parse(values.get("little-list.tasks.v1")!)[0],
+    ).not.toHaveProperty("pin_color");
   });
   it("places newly created tasks before existing siblings", async () => {
     const gateway = createGateway("local");

@@ -69,7 +69,7 @@
   gap: 4px;
   min-width: 0;
   flex: 1 1 auto;
-  overflow: hidden;
+  overflow: visible;
 }
 .task-check {
   flex-shrink: 0;
@@ -93,79 +93,22 @@
 }
 .pin-marker {
   position: absolute;
-  top: 2px;
+  top: -10px;
   left: 0;
   z-index: 2;
   display: grid;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   place-items: center;
-  border-radius: 50%;
+  color: var(--accent);
   opacity: 0;
   filter: drop-shadow(2px 3px 2px rgb(24 25 19 / 28%));
 }
-.pin-olive {
-  border: 1px solid #66734c;
-  background: radial-gradient(
-    circle at 32% 26%,
-    #e2efb4 0 12%,
-    #aebf7d 42%,
-    #66734c 100%
-  );
-  box-shadow:
-    inset 1px 1px 1px #f0f6d5,
-    inset -2px -3px 3px #4e5b3a;
-}
-.pin-berry {
-  border: 1px solid #733e4c;
-  background: radial-gradient(
-    circle at 32% 26%,
-    #f4b9bb 0 12%,
-    #c8787f 42%,
-    #733e4c 100%
-  );
-  box-shadow:
-    inset 1px 1px 1px #ffe1df,
-    inset -2px -3px 3px #62333e;
-}
-.pin-sage {
-  border: 1px solid #456455;
-  background: radial-gradient(
-    circle at 32% 26%,
-    #c8ded0 0 12%,
-    #78a18b 42%,
-    #456455 100%
-  );
-  box-shadow:
-    inset 1px 1px 1px #e4f4e8,
-    inset -2px -3px 3px #354c40;
-}
-.pin-slate {
-  border: 1px solid #4b626b;
-  background: radial-gradient(
-    circle at 32% 26%,
-    #d3dde0 0 12%,
-    #8299a0 42%,
-    #4b626b 100%
-  );
-  box-shadow:
-    inset 1px 1px 1px #edf5f5,
-    inset -2px -3px 3px #3d5057;
-}
-.pin-cream {
-  border: 1px solid #aaa18d;
-  background: radial-gradient(
-    circle at 32% 26%,
-    #fffdf4 0 12%,
-    #e4ddc9 42%,
-    #aaa18d 100%
-  );
-  box-shadow:
-    inset 1px 1px 1px #fffef8,
-    inset -2px -3px 3px #8f8877;
-}
 .pin-marker svg {
-  display: none;
+  transform: rotate(45deg);
+}
+.pin-marker svg path:nth-child(2) {
+  fill: currentColor;
 }
 .pin-marker.visible {
   opacity: 1;
@@ -215,11 +158,14 @@
   transition: background 0.15s;
 }
 .reorder-surface {
-  cursor: grab;
+  cursor: pointer;
   touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+}
+.reorder-surface:disabled {
+  cursor: not-allowed;
 }
 .dragging .reorder-surface {
   cursor: grabbing;

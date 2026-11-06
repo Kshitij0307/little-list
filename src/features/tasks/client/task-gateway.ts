@@ -1,7 +1,6 @@
 import {
   applyTaskPatch,
   makeTask,
-  PIN_COLORS,
   validateTaskParent,
   taskSchema,
   type Task,
@@ -40,38 +39,6 @@ export interface TaskGateway {
 
 const STORAGE_KEY = "little-list.tasks.v1";
 
-function repairPinColors(tasks: Task[]) {
-  const next = [...tasks];
-  const pinned = next
-    .filter((task) => task.pinned && !task.deleted_at)
-    .sort((a, b) => a.rank.localeCompare(b.rank));
-  let changed = false;
-  const assigned = new Map(
-    pinned.map((task, index) => [
-      task.id,
-      PIN_COLORS[index % PIN_COLORS.length],
-    ]),
-  );
-  for (let index = 0; index < next.length; index += 1) {
-    const task = next[index];
-    const color = task.pinned
-      ? (task.pin_color ?? assigned.get(task.id))
-      : null;
-    if (task.pin_color !== color) {
-      next[index] = { ...task, pin_color: color ?? "olive" };
-      changed = true;
-    }
-  }
-  return changed ? next : tasks;
-}
-
-function nextPinColor(tasks: Task[], id: string) {
-  const pinnedCount = tasks.filter(
-    (task) => task.id !== id && task.pinned && !task.deleted_at,
-  ).length;
-  return PIN_COLORS[pinnedCount % PIN_COLORS.length];
-}
-
 function readLocal(): Task[] {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (!saved) return [];
@@ -81,6 +48,10 @@ function readLocal(): Task[] {
     let upgraded = false;
     const grouped = new Map<string, Record<string, unknown>[]>();
     for (const task of raw) {
+      if ("pin_color" in task) {
+        delete task.pin_color;
+        upgraded = true;
+      }
       if (!("pinned" in task) && typeof task.starred === "boolean") {
         task.pinned = task.starred;
         upgraded = true;
@@ -103,8 +74,8 @@ function readLocal(): Task[] {
       group.forEach((task, index) => (task.rank = ranks[index]));
     }
     const parsed = taskSchema.array().parse(raw);
-    tasks = repairPinColors(parsed);
-    if (upgraded || tasks !== parsed) writeLocal(tasks);
+    tasks = parsed;
+    if (upgraded) writeLocal(tasks);
   } catch {
     throw new Error(
       "Your saved list could not be read. It has been left untouched.",
@@ -217,13 +188,11 @@ export function createGateway(mode: StorageMode): TaskGateway {
             task.pinned === input.pinned,
         )
         .sort((a, b) => a.rank.localeCompare(b.rank));
-      let task = makeTask(
+      const task = makeTask(
         input,
         undefined,
         rankBetween(null, siblings.at(0)?.rank ?? null),
       );
-      if (task.pinned)
-        task = { ...task, pin_color: nextPinColor(tasks, task.id) };
       validateTaskParent(tasks, task.id, task.parent_id);
       writeLocal([...tasks, task]);
       return task;
@@ -233,12 +202,6 @@ export function createGateway(mode: StorageMode): TaskGateway {
       const current = tasks.find((task) => task.id === id);
       if (!current) throw new Error("Task not found. Refresh your list.");
       let task = applyTaskPatch(current, input);
-      if (input.pinned !== undefined && input.pinned !== current.pinned) {
-        task = {
-          ...task,
-          pin_color: task.pinned ? nextPinColor(tasks, id) : null,
-        };
-      }
       if (
         (input.status !== undefined && input.status !== current.status) ||
         (input.parent_id !== undefined &&
