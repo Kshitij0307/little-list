@@ -135,7 +135,7 @@ it("restores the focus filter from the URL and preserves it across status change
   expect(screen.getByText("Other tab")).toBeTruthy();
   expect(screen.getByText("First")).toBeTruthy();
   expect(screen.getByText("Focused step")).toBeTruthy();
-  expect(screen.queryByText("Second")).toBeNull();
+  expect(screen.getByText("Second")).toBeTruthy();
   expect(screen.getByRole("img", { name: "Subtask of Second" })).toBeTruthy();
   const focusResults = screen.getByRole("region", { name: "Focused tasks" });
   expect(
@@ -188,6 +188,14 @@ it("restores the selected subtask tab from the task route status parameter", () 
     screen.getByRole("tab", { name: "Done 1" }).getAttribute("aria-selected"),
   ).toBe("true");
   expect(screen.getByText("Finished subtask")).toBeTruthy();
+  const statusTabs = screen.getByRole("tablist", { name: "Subtask status" });
+  const controlsRow = statusTabs.parentElement?.parentElement?.parentElement;
+  expect(
+    controlsRow?.contains(screen.getByRole("button", { name: "Select tasks" })),
+  ).toBe(true);
+  expect(controlsRow?.nextElementSibling?.textContent).toBe(
+    "Progress already made on this task.",
+  );
 
   fireEvent.click(screen.getByRole("tab", { name: "Todo 1" }));
   expect(window.location.search).toBe("?view=compact");
@@ -639,6 +647,39 @@ it("searches active subtasks and shows their parent context", () => {
     screen.queryByRole("button", { name: "Edit Find this deleted step" }),
   ).toBeNull();
   expect(screen.queryByRole("button", { name: "Select tasks" })).toBeNull();
+});
+
+it("counts only unfinished subtasks in task rows", () => {
+  const parent = { ...first, title: "Find this parent" };
+  const unfinishedChild = {
+    ...second,
+    id: "5f41874e-e374-4c6e-a1c8-36a85a255ef0",
+    parent_id: parent.id,
+    title: "An unfinished step",
+  };
+  const finishedChild = {
+    ...unfinishedChild,
+    id: "a85dfb25-55f9-40df-98e1-3183153bfffd",
+    status: "done" as const,
+    title: "A finished step",
+  };
+
+  render(
+    <TasksProvider
+      mode="cloud"
+      userId="owner"
+      initialState={{ tasks: [parent, unfinishedChild, finishedChild] }}
+    >
+      <TaskListView />
+    </TasksProvider>,
+  );
+
+  fireEvent.change(screen.getByRole("textbox", { name: "Search tasks" }), {
+    target: { value: "Find this parent" },
+  });
+
+  expect(screen.getByLabelText("1 subtask")).toBeTruthy();
+  expect(screen.queryByLabelText("2 subtasks")).toBeNull();
 });
 
 it("clears selection when tabs or search filters change and shows only other destinations", async () => {

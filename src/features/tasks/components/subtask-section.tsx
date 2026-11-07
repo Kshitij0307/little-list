@@ -2,6 +2,7 @@
 import subtasksStyles from "./subtask-section.module.css";
 import listStyles from "./task-list-view.module.css";
 import fieldsStyles from "@/components/ui/fields.module.css";
+import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { CheckCheck, Feather, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,10 @@ import {
 } from "../domain/task";
 import { useTaskContext } from "../hooks/tasks-provider";
 import { useStatusQueryParam } from "../hooks/use-status-query-param";
-import { SelectableTaskList } from "./selectable-task-list";
+import {
+  SelectableTaskList,
+  TaskSelectionToggle,
+} from "./selectable-task-list";
 import { useTaskSelection } from "../hooks/use-task-selection";
 import { TaskPicker } from "./task-picker";
 import { TaskStatusTabs } from "./task-status-tabs";
@@ -97,15 +101,50 @@ export function SubtaskSection({
         </div>
       </form>
 
-      <div className={subtasksStyles["subtask-controls"]}>
-        <TaskStatusTabs
-          value={subtaskStatus}
-          onChange={setSubtaskStatus}
-          tasks={children}
-          idPrefix="subtask"
-          label="Subtask status"
-        />
-        <p>{SUBTASK_NOTES[subtaskStatus]}</p>
+      <div className={subtasksStyles["subtask-header"]}>
+        <div
+          className={cn(
+            listStyles["list-controls"],
+            subtasksStyles["subtask-controls"],
+          )}
+        >
+          <div
+            className={cn(
+              listStyles["status-tabs-slot"],
+              subtasksStyles["subtask-tabs-slot"],
+            )}
+          >
+            <TaskStatusTabs
+              value={subtaskStatus}
+              onChange={setSubtaskStatus}
+              tasks={children}
+              idPrefix="subtask"
+              label="Subtask status"
+            />
+          </div>
+          <div
+            className={cn(
+              listStyles["list-actions"],
+              subtasksStyles["subtask-actions"],
+            )}
+          >
+            <TaskSelectionToggle
+              selection={selection}
+              disabled={busy || !visibleChildren.length}
+              idPrefix="subtask"
+            />
+          </div>
+        </div>
+        <div
+          className={cn(
+            listStyles["list-subheader"],
+            subtasksStyles["subtask-subheader"],
+          )}
+        >
+          <p className={subtasksStyles["subtask-description"]}>
+            {SUBTASK_NOTES[subtaskStatus]}
+          </p>
+        </div>
       </div>
 
       <div
@@ -119,6 +158,7 @@ export function SubtaskSection({
           tasks={visibleChildren}
           status={subtaskStatus}
           parentId={taskId}
+          externalTrigger
           className={[
             listStyles["task-list"],
             subtasksStyles["subtask-list"],

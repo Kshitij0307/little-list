@@ -439,7 +439,7 @@ it("keeps subtask counts and sorted status rows scoped to the current parent", a
     })
     .closest("li");
   expect(
-    within(plainStepRow as HTMLElement).getByTitle("Contains 1 subtask"),
+    within(plainStepRow as HTMLElement).getByTitle("Contains 1 active task"),
   ).toBeTruthy();
   fireEvent.click(screen.getByRole("tab", { name: "Done 1" }));
   expect(within(panel).getAllByRole("listitem")).toHaveLength(1);

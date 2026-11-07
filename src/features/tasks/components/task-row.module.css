@@ -249,6 +249,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.parent-context-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .compact-view .task-meta {
   flex-wrap: nowrap;
   gap: 5px;
@@ -259,16 +264,26 @@
   padding: 0;
   background: transparent;
 }
-.compact-view .task-meta > .date-badge,
-.compact-view .task-meta > .parent-context {
+.compact-view .task-meta > .date-badge {
   flex: 0 0 auto;
 }
 .compact-view .task-meta > .parent-context {
-  max-width: none;
-  overflow: visible;
+  max-width: 18ch;
+  flex: 0 1 auto;
+  overflow: hidden;
 }
 .compact-view .task-meta > .subtask-count {
   flex: 0 0 auto;
+}
+@container task-list (min-width: 481px) {
+  .compact-view .task-meta {
+    flex-wrap: wrap;
+    gap: 10px;
+    white-space: normal;
+  }
+  .compact-view .task-meta > .parent-context {
+    max-width: 32ch;
+  }
 }
 .task-actions {
   display: flex;
@@ -306,6 +321,9 @@
 @container task-list (max-width: 700px) {
   .task-primary {
     gap: 2px;
+  }
+  .parent-context-label {
+    display: none;
   }
 }
 @container task-list (max-width: 480px) {

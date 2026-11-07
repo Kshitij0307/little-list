@@ -267,7 +267,7 @@ export function TaskRow({
                 <span
                   className={rowStyles["subtask-count"]}
                   aria-label={`${subtaskCount} ${subtaskCount === 1 ? "subtask" : "subtasks"}`}
-                  title={`Contains ${subtaskCount} ${subtaskCount === 1 ? "subtask" : "subtasks"}`}
+                  title={`Contains ${subtaskCount} active ${subtaskCount === 1 ? "task" : "tasks"}`}
                 >
                   <ListChecks size={12} aria-hidden="true" /> {subtaskCount}
                 </span>
@@ -280,7 +280,12 @@ export function TaskRow({
                   role="img"
                 >
                   {compactView ? (
-                    <CornerDownRight size={12} aria-hidden="true" />
+                    <>
+                      <CornerDownRight size={12} aria-hidden="true" />
+                      <span className={rowStyles["parent-context-label"]}>
+                        {parentTitle}
+                      </span>
+                    </>
                   ) : (
                     <>↳ {parentTitle}</>
                   )}

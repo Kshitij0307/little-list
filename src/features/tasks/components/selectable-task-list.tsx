@@ -116,7 +116,7 @@ export function SelectableTaskList({
       .map((task) => [task.id, task.title]),
   );
   for (const child of allTasks) {
-    if (child.parent_id && !child.deleted_at) {
+    if (child.parent_id && !child.deleted_at && child.status !== "done") {
       subtaskCounts.set(
         child.parent_id,
         (subtaskCounts.get(child.parent_id) ?? 0) + 1,

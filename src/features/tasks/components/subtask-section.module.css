@@ -45,15 +45,8 @@
 ul.subtask-list {
   padding: 0;
 }
-.subtask-controls {
+.subtask-header {
   margin-top: 24px;
-  padding-bottom: 13px;
-  border-bottom: 1px solid var(--line);
-}
-.subtask-controls > p {
-  margin: 11px 2px 0;
-  color: var(--muted);
-  font-size: var(--text-caption);
 }
 .subtask-panel {
   min-height: 170px;
@@ -83,7 +76,49 @@ ul.subtask-list {
   padding-top: 19px;
   border-top: 1px solid var(--line);
 }
-@container subtasks-section (max-width: 480px) {
+@container subtasks-section (max-width: 560px) {
+  .subtask-header {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0;
+  }
+  .subtask-header::after {
+    content: "";
+    grid-row: 1;
+    grid-column: 1 / -1;
+    border-bottom: 1px solid var(--line);
+    align-self: end;
+    pointer-events: none;
+  }
+  .subtask-header .subtask-controls,
+  .subtask-header .subtask-subheader {
+    display: contents;
+  }
+  .subtask-header .subtask-tabs-slot {
+    grid-row: 1;
+    grid-column: 1 / -1;
+    padding-bottom: 12px;
+  }
+  .subtask-header .subtask-actions {
+    grid-row: 2;
+    grid-column: 2;
+    order: 0;
+    width: auto;
+    display: flex;
+    margin-left: 0;
+    align-self: center;
+  }
+  .subtask-header .subtask-description {
+    grid-row: 2;
+    grid-column: 1;
+    margin: 12px 0 12px 18px;
+    font-size: var(--text-caption);
+    width: auto;
+    min-width: 0;
+    align-self: center;
+  }
   .subtask-input-row {
     gap: 6px;
   }

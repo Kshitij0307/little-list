@@ -221,7 +221,7 @@ describe("shared task controls", () => {
     expect(screen.getByLabelText("4 subtasks")).toBeTruthy();
     expect(screen.getByText("4")).toBeTruthy();
     expect(screen.getByLabelText("4 subtasks").getAttribute("title")).toBe(
-      "Contains 4 subtasks",
+      "Contains 4 active tasks",
     );
     expect(screen.getByLabelText("Pinned").getAttribute("title")).toBe(
       "Pinned",
@@ -266,6 +266,7 @@ describe("shared task controls", () => {
             focus_today: true,
           }}
           showStatus
+          compactView
           focusView
           parentTitle="Feature branch"
           subtaskCount={4}
@@ -282,6 +283,7 @@ describe("shared task controls", () => {
     expect(
       screen.getByRole("img", { name: "Subtask of Feature branch" }),
     ).toBeTruthy();
+    expect(screen.getByText("Feature branch")).toBeTruthy();
     expect(screen.getByLabelText("4 subtasks")).toBeTruthy();
     expect(screen.getByText("4")).toBeTruthy();
     expect(
