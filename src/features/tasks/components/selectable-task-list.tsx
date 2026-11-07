@@ -76,6 +76,10 @@ export function SelectableTaskList({
   tasks,
   status,
   parentId = null,
+  showStatus = false,
+  compactView = false,
+  focusView = false,
+  searchView = false,
   className,
   onOpenTask,
   children,
@@ -86,6 +90,10 @@ export function SelectableTaskList({
   tasks: Task[];
   status: TaskStatus;
   parentId?: string | null;
+  showStatus?: boolean;
+  compactView?: boolean;
+  focusView?: boolean;
+  searchView?: boolean;
   className: string;
   onOpenTask(id: string): void;
   children: ReactNode;
@@ -93,7 +101,28 @@ export function SelectableTaskList({
   externalTrigger?: boolean;
   reorderEnabled?: boolean;
 }) {
-  const { busy, update, move, remove, reorder } = useTaskContext();
+  const {
+    tasks: allTasks,
+    busy,
+    update,
+    move,
+    remove,
+    reorder,
+  } = useTaskContext();
+  const subtaskCounts = new Map<string, number>();
+  const taskTitles = new Map(
+    allTasks
+      .filter((task) => !task.deleted_at)
+      .map((task) => [task.id, task.title]),
+  );
+  for (const child of allTasks) {
+    if (child.parent_id && !child.deleted_at) {
+      subtaskCounts.set(
+        child.parent_id,
+        (subtaskCounts.get(child.parent_id) ?? 0) + 1,
+      );
+    }
+  }
   const { active, ids, selected, allSelected, target, chooseTarget } =
     selection;
   const [pending, setPending] = useState<"move" | "delete" | null>(null);
@@ -403,6 +432,16 @@ export function SelectableTaskList({
               <TaskRow
                 key={task.id}
                 task={task}
+                showStatus={showStatus}
+                compactView={compactView}
+                focusView={focusView}
+                searchView={searchView}
+                subtaskCount={subtaskCounts.get(task.id) ?? 0}
+                parentTitle={
+                  parentId === null && task.parent_id
+                    ? taskTitles.get(task.parent_id)
+                    : undefined
+                }
                 busy={busy}
                 onEdit={() => onOpenTask(task.id)}
                 onUpdate={(patch, label) => void update(task.id, patch, label)}
@@ -411,8 +450,9 @@ export function SelectableTaskList({
                     ? {
                         selected: ids.includes(task.id),
                         disabled:
-                          !ids.includes(task.id) &&
-                          selected.length >= MAX_BATCH_TASKS,
+                          (parentId === null && !!task.parent_id) ||
+                          (!ids.includes(task.id) &&
+                            selected.length >= MAX_BATCH_TASKS),
                         toggle: () => selection.toggle(task.id),
                       }
                     : undefined

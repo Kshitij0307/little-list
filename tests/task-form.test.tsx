@@ -239,8 +239,11 @@ it("keeps task options in one responsive group and shows move-to-main-list only 
   const onMoveToMainList = vi.fn().mockResolvedValue(true);
   const view = render(<TaskForm task={task} busy={false} onSave={onSave} />);
   const options = screen.getByRole("group", { name: "Task options" });
-  expect(within(options).getByLabelText("Pinned")).toBeTruthy();
-  expect(within(options).getByLabelText("Focus today")).toBeTruthy();
+  expect(within(options).getByRole("button", { name: "Pin" })).toBeTruthy();
+  expect(
+    within(options).getByRole("button", { name: "Focus today" }),
+  ).toBeTruthy();
+  expect(within(options).queryByRole("checkbox")).toBeNull();
   expect(
     within(options).queryByRole("button", { name: "Move to main list" }),
   ).toBeNull();
@@ -258,6 +261,46 @@ it("keeps task options in one responsive group and shows move-to-main-list only 
   });
   fireEvent.click(moveButton);
   expect(onMoveToMainList).toHaveBeenCalledOnce();
+});
+
+it("toggles pin and focus as draft buttons and saves both values", async () => {
+  const onSave = vi.fn().mockResolvedValue(true);
+  render(<TaskForm task={task} busy={false} onSave={onSave} />);
+  fireEvent.click(screen.getByRole("button", { name: "Pin" }));
+  fireEvent.click(screen.getByRole("button", { name: "Focus today" }));
+
+  expect(
+    screen.getByRole("button", { name: "Unpin" }).getAttribute("aria-pressed"),
+  ).toBe("true");
+  expect(
+    screen
+      .getByRole("button", { name: "Remove focus" })
+      .getAttribute("aria-pressed"),
+  ).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith({ pinned: true, focus_today: true }),
+  );
+});
+
+it("offers unpin and remove-focus actions when both options are active", async () => {
+  const onSave = vi.fn().mockResolvedValue(true);
+  render(
+    <TaskForm
+      task={{ ...task, pinned: true, focus_today: true }}
+      busy={false}
+      onSave={onSave}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Unpin" }));
+  fireEvent.click(screen.getByRole("button", { name: "Remove focus" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith({ pinned: false, focus_today: false }),
+  );
 });
 
 describe("saved task links", () => {

@@ -178,13 +178,14 @@
 .task-title {
   display: -webkit-box;
   width: 100%;
-  font-size: var(--text-body);
-  line-height: 1.45;
   overflow: hidden;
   overflow-wrap: anywhere;
+  font-size: var(--text-body);
+  line-height: 1.45;
+  text-overflow: ellipsis;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 .task-done .task-title {
   color: var(--muted);
@@ -204,10 +205,14 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  min-width: 0;
   max-width: 100%;
   overflow: hidden;
   color: var(--accent);
   font-size: 10px;
+}
+.focus-label-compact {
+  display: none;
 }
 .task-meta > span {
   display: inline-flex;
@@ -220,6 +225,50 @@
 }
 .date-badge.overdue {
   color: var(--danger);
+}
+.task-meta > .status-badge {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  color: var(--muted);
+  line-height: 1.4;
+}
+.task-meta > .subtask-count {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  line-height: 1.4;
+}
+.task-meta > .parent-context {
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: 18ch;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.compact-view .task-meta {
+  flex-wrap: nowrap;
+  gap: 5px;
+  white-space: nowrap;
+}
+.compact-view .task-meta > .status-badge {
+  flex: 0 0 auto;
+  padding: 0;
+  background: transparent;
+}
+.compact-view .task-meta > .date-badge,
+.compact-view .task-meta > .parent-context {
+  flex: 0 0 auto;
+}
+.compact-view .task-meta > .parent-context {
+  max-width: none;
+  overflow: visible;
+}
+.compact-view .task-meta > .subtask-count {
+  flex: 0 0 auto;
 }
 .task-actions {
   display: flex;
@@ -275,6 +324,20 @@
   }
   .task-note {
     font-size: var(--text-small);
+  }
+  .task-meta {
+    flex-wrap: nowrap;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .task-meta > span {
+    gap: 3px;
+  }
+  .focus-label-full {
+    display: none;
+  }
+  .focus-label-compact {
+    display: inline;
   }
 }
 @container task-list (max-width: 360px) {

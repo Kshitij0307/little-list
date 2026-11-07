@@ -105,6 +105,13 @@ it("restores the selected status tab from the URL and preserves other parameters
 it("restores the focus filter from the URL and preserves it across status changes", () => {
   const focusedTodo = { ...first, focus_today: true };
   const focusedProgress = { ...progress, focus_today: true };
+  const focusedChild = {
+    ...second,
+    id: "29d81585-7d1d-4a29-b441-8ae084e1868c",
+    parent_id: second.id,
+    title: "Focused step",
+    focus_today: true,
+  };
   window.history.replaceState(
     null,
     "",
@@ -115,7 +122,9 @@ it("restores the focus filter from the URL and preserves it across status change
     <TasksProvider
       mode="cloud"
       userId="owner"
-      initialState={{ tasks: [focusedTodo, focusedProgress, second] }}
+      initialState={{
+        tasks: [focusedTodo, focusedProgress, second, focusedChild],
+      }}
     >
       <TaskListView />
     </TasksProvider>,
@@ -124,18 +133,31 @@ it("restores the focus filter from the URL and preserves it across status change
   const focus = screen.getByRole("button", { name: "Focus today" });
   expect(focus.getAttribute("aria-pressed")).toBe("true");
   expect(screen.getByText("Other tab")).toBeTruthy();
-
-  fireEvent.click(screen.getByRole("tab", { name: "Todo 2" }));
-  expect(window.location.search).toBe("?focus=true&view=compact");
   expect(screen.getByText("First")).toBeTruthy();
+  expect(screen.getByText("Focused step")).toBeTruthy();
   expect(screen.queryByText("Second")).toBeNull();
+  expect(screen.getByRole("img", { name: "Subtask of Second" })).toBeTruthy();
+  const focusResults = screen.getByRole("region", { name: "Focused tasks" });
+  expect(
+    Array.from(focusResults.querySelectorAll('[class*="status-badge"]')).map(
+      (badge) => badge.getAttribute("aria-label"),
+    ),
+  ).toEqual(["Todo", "Todo", "In progress"]);
+  expect(screen.queryByRole("tablist", { name: "Task status" })).toBeNull();
 
   fireEvent.click(focus);
+  expect(window.location.search).toBe("?status=in_progress&view=compact");
+  expect(screen.getByRole("tablist", { name: "Task status" })).toBeTruthy();
+  expect(screen.getByText("Other tab")).toBeTruthy();
+  expect(screen.queryByText("First")).toBeNull();
+
+  fireEvent.click(screen.getByRole("tab", { name: "Todo 2" }));
   expect(window.location.search).toBe("?view=compact");
   expect(screen.getByText("Second")).toBeTruthy();
 
   fireEvent.click(focus);
   expect(window.location.search).toBe("?view=compact&focus=true");
+  expect(screen.getByText("Focused step")).toBeTruthy();
 });
 
 it("restores the selected subtask tab from the task route status parameter", () => {
@@ -556,6 +578,68 @@ it.each([false, true])(
     expect(gateway.move).toHaveBeenCalledTimes(2);
   },
 );
+
+it("searches active subtasks and shows their parent context", () => {
+  const child = {
+    ...second,
+    id: "29d81585-7d1d-4a29-b441-8ae084e1868c",
+    parent_id: first.id,
+    title: "Find this smaller step",
+    focus_today: true,
+  };
+  const deletedChild = {
+    ...child,
+    id: "b8302a84-1f4c-4829-a991-b5cda38236a0",
+    title: "Find this deleted step",
+    deleted_at: new Date().toISOString(),
+  };
+  const progressMatch = {
+    ...progress,
+    title: "Find this in-progress task",
+  };
+  const doneMatch = {
+    ...second,
+    id: "6a5a10a3-62e6-476c-8a71-512b373f09db",
+    title: "Find this completed task",
+    status: "done" as const,
+  };
+
+  render(
+    <TasksProvider
+      mode="cloud"
+      userId="owner"
+      initialState={{
+        tasks: [first, second, child, deletedChild, progressMatch, doneMatch],
+      }}
+    >
+      <TaskListView />
+    </TasksProvider>,
+  );
+
+  fireEvent.change(screen.getByRole("textbox", { name: "Search tasks" }), {
+    target: { value: "Find" },
+  });
+
+  expect(
+    screen.getByRole("button", { name: "Edit Find this smaller step" }),
+  ).toBeTruthy();
+  const searchResults = screen.getByRole("region", { name: "Search results" });
+  expect(
+    Array.from(searchResults.querySelectorAll('[class*="status-badge"]')).map(
+      (badge) => badge.getAttribute("aria-label"),
+    ),
+  ).toEqual(["Todo", "Done", "In progress"]);
+  expect(screen.queryByRole("tablist", { name: "Task status" })).toBeNull();
+  expect(screen.getByRole("img", { name: "Subtask of First" })).toBeTruthy();
+  expect(
+    screen.getByRole("img", { name: "Marked as today’s focus" }),
+  ).toBeTruthy();
+  expect(screen.queryByText("Focus")).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: "Edit Find this deleted step" }),
+  ).toBeNull();
+  expect(screen.queryByRole("button", { name: "Select tasks" })).toBeNull();
+});
 
 it("clears selection when tabs or search filters change and shows only other destinations", async () => {
   render(

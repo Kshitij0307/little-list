@@ -80,10 +80,14 @@ export function TaskListView() {
     return () => window.removeEventListener("keydown", shortcut);
   }, []);
   const roots = mainTasks(tasks);
+  const hasSearchQuery = !!query.trim();
+  const showAllStatuses = focusToday || hasSearchQuery;
   const visible = sortTasks(
-    roots.filter(
+    tasks.filter(
       (task) =>
-        task.status === status &&
+        !task.deleted_at &&
+        (!task.parent_id || showAllStatuses) &&
+        (showAllStatuses || task.status === status) &&
         (!focusToday || task.focus_today) &&
         `${task.title} ${task.notes}`
           .toLowerCase()
@@ -91,8 +95,11 @@ export function TaskListView() {
     ),
     status,
   );
+  const selectableVisible = showAllStatuses
+    ? []
+    : visible.filter((task) => !task.parent_id);
   const scope = JSON.stringify([status, query, focusToday]);
-  const selection = useTaskSelection(visible, scope);
+  const selection = useTaskSelection(selectableVisible, scope);
 
   return (
     <>
@@ -124,20 +131,35 @@ export function TaskListView() {
         </Button>
       </form>
       <div className={listStyles["list-controls"]}>
-        <TaskStatusTabs
-          value={status}
-          onChange={(status) => changeFilters({ status })}
-          tasks={roots}
-          idPrefix="task"
-          label="Task status"
-          loading={loading}
-        />
-        <div className={listStyles["list-actions"]}>
-          <TaskSelectionToggle
-            selection={selection}
+        <div
+          className={cn(
+            listStyles["status-tabs-slot"],
+            showAllStatuses && listStyles["status-tabs-hidden"],
+          )}
+          aria-hidden={showAllStatuses || undefined}
+        >
+          <TaskStatusTabs
+            value={status}
+            onChange={(status) => changeFilters({ status })}
+            tasks={roots}
             idPrefix="task"
-            disabled={loading || busy || !visible.length}
+            label="Task status"
+            loading={loading}
           />
+        </div>
+        <div
+          className={cn(
+            listStyles["list-actions"],
+            showAllStatuses && listStyles["list-actions-unified"],
+          )}
+        >
+          {!showAllStatuses && (
+            <TaskSelectionToggle
+              selection={selection}
+              idPrefix="task"
+              disabled={loading || busy || !selectableVisible.length}
+            />
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -154,7 +176,15 @@ export function TaskListView() {
         </div>
       </div>
       <div className={listStyles["list-subheader"]}>
-        <p>{TAB_NOTES[status]}</p>
+        <p>
+          {focusToday
+            ? hasSearchQuery
+              ? "Focused tasks matching your search."
+              : "Focused tasks across all stages."
+            : hasSearchQuery
+              ? "Search across every status and subtask."
+              : TAB_NOTES[status]}
+        </p>
         <div className={listStyles["search-box"]}>
           <Search size={15} />
           <input
@@ -186,9 +216,16 @@ export function TaskListView() {
 
       <TaskErrorBanner />
       <div
-        role="tabpanel"
+        role={showAllStatuses ? "region" : "tabpanel"}
         id="task-panel"
-        aria-labelledby={`task-tab-${status}`}
+        aria-labelledby={showAllStatuses ? undefined : `task-tab-${status}`}
+        aria-label={
+          showAllStatuses
+            ? focusToday
+              ? "Focused tasks"
+              : "Search results"
+            : undefined
+        }
         className={listStyles["task-panel"]}
         tabIndex={0}
         aria-busy={loading}
@@ -202,16 +239,22 @@ export function TaskListView() {
             externalTrigger
             tasks={visible}
             status={status}
+            showStatus={showAllStatuses}
+            compactView={showAllStatuses}
+            focusView={focusToday}
+            searchView={hasSearchQuery && !focusToday}
             reorderEnabled={!query.trim() && !focusToday}
             className={listStyles["task-list"]}
             onOpenTask={(id) => router.push(`/tasks/${id}`)}
           >
             <div className={feedbackStyles["empty-state"]}>
               <span className={feedbackStyles["empty-icon"]}>
-                {status === "done" ? (
-                  <CheckCheck size={30} strokeWidth={1.3} />
-                ) : focusToday ? (
+                {focusToday ? (
                   <Star size={30} strokeWidth={1.3} />
+                ) : hasSearchQuery ? (
+                  <Search size={30} strokeWidth={1.3} />
+                ) : status === "done" ? (
+                  <CheckCheck size={30} strokeWidth={1.3} />
                 ) : (
                   <Feather size={30} strokeWidth={1.3} />
                 )}

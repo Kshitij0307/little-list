@@ -133,25 +133,36 @@ export function TaskForm({
         role="group"
         aria-label="Task options"
       >
-        <label>
-          <input
-            type="checkbox"
-            checked={values.pinned}
-            onChange={(event) => change("pinned", event.target.checked)}
-            disabled={busy}
-          />
-          <Pin size={15} /> Pinned
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={values.focus_today}
-            onChange={(event) => change("focus_today", event.target.checked)}
-            disabled={busy}
-          />
-          <Star size={15} fill={values.focus_today ? "currentColor" : "none"} />{" "}
-          Focus today
-        </label>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={formStyles["editor-toggle"]}
+          aria-pressed={values.pinned}
+          title={values.pinned ? "Unpin this task" : "Pin this task"}
+          disabled={busy}
+          onClick={() => change("pinned", !values.pinned)}
+        >
+          <Pin size={15} fill={values.pinned ? "currentColor" : "none"} />
+          {values.pinned ? "Unpin" : "Pin"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={formStyles["editor-toggle"]}
+          aria-pressed={values.focus_today}
+          title={
+            values.focus_today
+              ? "Remove from today’s focus"
+              : "Focus on this today"
+          }
+          disabled={busy}
+          onClick={() => change("focus_today", !values.focus_today)}
+        >
+          <Star size={15} fill={values.focus_today ? "currentColor" : "none"} />
+          {values.focus_today ? "Remove focus" : "Focus today"}
+        </Button>
         {onMoveToMainList && (
           <Button
             type="button"

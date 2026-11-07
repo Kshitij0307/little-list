@@ -267,6 +267,106 @@ it("opens a task while a background refresh is pending", async () => {
   expect(screen.queryByPlaceholderText("What’s on your mind?")).toBeNull();
 });
 
+it("shows the active direct subtask count on a task row", async () => {
+  const child = {
+    ...task,
+    id: "d2e80888-53ec-419d-aea0-54beb67d77b3",
+    parent_id: task.id,
+    title: "A smaller step",
+  };
+  const deletedChild = {
+    ...child,
+    id: crypto.randomUUID(),
+    title: "An old step",
+    deleted_at: new Date().toISOString(),
+  };
+  gateway.list.mockResolvedValue({
+    userId: null,
+    tasks: [task, child, deletedChild],
+  });
+
+  render(
+    <TasksProvider mode="local">
+      <TaskListView />
+    </TasksProvider>,
+  );
+
+  expect(await screen.findByLabelText("1 subtask")).toBeTruthy();
+});
+
+it("shows child counts for nested subtasks in focus view", async () => {
+  const child = {
+    ...task,
+    id: "d2e80888-53ec-419d-aea0-54beb67d77b3",
+    parent_id: task.id,
+    title: "A smaller step",
+    focus_today: true,
+  };
+  const grandchild = {
+    ...child,
+    id: "73d0cb62-6890-4b3c-a0c7-3d1b74d8382d",
+    parent_id: child.id,
+    title: "An even smaller step",
+  };
+  gateway.list.mockResolvedValue({
+    userId: null,
+    tasks: [{ ...task, focus_today: true }, child, grandchild],
+  });
+  window.history.replaceState(null, "", "/?focus=true");
+
+  render(
+    <TasksProvider mode="local">
+      <TaskListView />
+    </TasksProvider>,
+  );
+
+  const childRow = await screen.findByRole("button", {
+    name: `Edit ${child.title}`,
+  });
+  const row = childRow.closest("li");
+  expect(row).toBeTruthy();
+  expect(within(row as HTMLElement).getByLabelText("1 subtask")).toBeTruthy();
+  expect(within(row as HTMLElement).getByText("1")).toBeTruthy();
+});
+
+it("shows a nested subtask's own child count in its parent subtask list", async () => {
+  const child = {
+    ...task,
+    id: "d2e80888-53ec-419d-aea0-54beb67d77b3",
+    parent_id: task.id,
+    title: "A smaller step",
+  };
+  const nested = {
+    ...child,
+    id: "73d0cb62-6890-4b3c-a0c7-3d1b74d8382d",
+    parent_id: child.id,
+    title: "An even smaller step",
+  };
+  const leaf = {
+    ...nested,
+    id: "8c4be16e-64de-4115-b62e-7f472f0dadc3",
+    parent_id: nested.id,
+    title: "One last step",
+  };
+  gateway.list.mockResolvedValue({
+    userId: null,
+    tasks: [task, child, nested, leaf],
+  });
+
+  render(
+    <TasksProvider mode="local">
+      <SubtaskSection taskId={child.id} onOpenTask={vi.fn()} />
+    </TasksProvider>,
+  );
+
+  const nestedRow = await screen.findByRole("button", {
+    name: `Edit ${nested.title}`,
+  });
+  expect(
+    within(nestedRow.closest("li") as HTMLElement).getByLabelText("1 subtask"),
+  ).toBeTruthy();
+});
+
 it("keeps subtask counts and sorted status rows scoped to the current parent", async () => {
   const child = {
     ...task,
@@ -292,6 +392,12 @@ it("keeps subtask counts and sorted status rows scoped to the current parent", a
     title: "Deleted step",
     deleted_at: new Date().toISOString(),
   };
+  const nested = {
+    ...child,
+    id: crypto.randomUUID(),
+    parent_id: child.id,
+    title: "Nested step",
+  };
   const unrelated = {
     ...child,
     id: crypto.randomUUID(),
@@ -300,7 +406,7 @@ it("keeps subtask counts and sorted status rows scoped to the current parent", a
   };
   gateway.list.mockResolvedValue({
     userId: null,
-    tasks: [task, child, pinned, done, deleted, unrelated],
+    tasks: [task, child, pinned, done, deleted, unrelated, nested],
   });
   render(
     <TasksProvider mode="local">
@@ -324,8 +430,17 @@ it("keeps subtask counts and sorted status rows scoped to the current parent", a
   const rows = within(panel).getAllByRole("listitem");
   expect(rows[0].textContent).toContain("Pinned step");
   expect(rows[1].textContent).toContain("Plain step");
+  expect(within(panel).queryByText("↳ Read a chapter")).toBeNull();
   expect(within(panel).queryByText("Deleted step")).toBeNull();
   expect(within(panel).queryByText("Unrelated task")).toBeNull();
+  const plainStepRow = within(panel)
+    .getByRole("button", {
+      name: "Edit Plain step",
+    })
+    .closest("li");
+  expect(
+    within(plainStepRow as HTMLElement).getByTitle("Contains 1 subtask"),
+  ).toBeTruthy();
   fireEvent.click(screen.getByRole("tab", { name: "Done 1" }));
   expect(within(panel).getAllByRole("listitem")).toHaveLength(1);
   expect(within(panel).getByText("Finished step")).toBeTruthy();

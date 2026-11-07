@@ -9,7 +9,9 @@ import {
   CalendarDays,
   Check,
   Circle,
+  CornerDownRight,
   Copy,
+  ListChecks,
   MoreHorizontal,
   Pencil,
   RotateCcw,
@@ -30,6 +32,12 @@ import {
 
 export function TaskRow({
   task,
+  subtaskCount = 0,
+  parentTitle,
+  showStatus = false,
+  compactView = false,
+  focusView = false,
+  searchView = false,
   busy,
   onEdit,
   onUpdate,
@@ -42,6 +50,12 @@ export function TaskRow({
   shiftDirection,
 }: {
   task: Task;
+  subtaskCount?: number;
+  parentTitle?: string;
+  showStatus?: boolean;
+  compactView?: boolean;
+  focusView?: boolean;
+  searchView?: boolean;
   busy: boolean;
   onEdit(): void;
   onUpdate(patch: TaskPatch, label?: string): void;
@@ -96,6 +110,7 @@ export function TaskRow({
       data-shift={shiftDirection}
       className={cn(
         rowStyles["task-row"],
+        compactView && rowStyles["compact-view"],
         done && rowStyles["task-done"],
         selection && rowStyles["selecting"],
         selection?.selected && rowStyles["task-selected"],
@@ -121,6 +136,7 @@ export function TaskRow({
             )}
             role={task.pinned ? "img" : undefined}
             aria-label={task.pinned ? "Pinned" : undefined}
+            title={task.pinned ? "Pinned" : undefined}
             aria-hidden={task.pinned ? undefined : "true"}
           >
             <Pin size={25} strokeWidth={1} aria-hidden="true" />
@@ -135,6 +151,13 @@ export function TaskRow({
                 : done
                   ? `Reopen ${task.title}`
                   : `Complete ${task.title}`
+            }
+            title={
+              selection
+                ? `Select ${task.title}`
+                : done
+                  ? "Reopen task"
+                  : "Mark as done"
             }
             disabled={busy || selection?.disabled}
             onClick={() =>
@@ -181,23 +204,86 @@ export function TaskRow({
           {task.notes && (
             <span className={rowStyles["task-note"]}>{task.notes}</span>
           )}
-          {(dateLabel || task.focus_today) && (
+          {(dateLabel ||
+            (task.focus_today && !done) ||
+            subtaskCount > 0 ||
+            parentTitle ||
+            showStatus) && (
             <span className={rowStyles["task-meta"]}>
+              {showStatus && (
+                <span
+                  className={rowStyles["status-badge"]}
+                  aria-label={STATUS_LABELS[task.status]}
+                  title={STATUS_LABELS[task.status]}
+                  role="img"
+                >
+                  <span>{STATUS_LABELS[task.status]}</span>
+                </span>
+              )}
               {dateLabel && (
                 <span
                   className={cn(
                     rowStyles["date-badge"],
                     overdue && rowStyles["overdue"],
                   )}
+                  title={
+                    overdue
+                      ? `Overdue — due ${dateLabel}`
+                      : `Due date: ${dateLabel}`
+                  }
                 >
                   <CalendarDays size={12} />
-                  {overdue ? "Overdue · " : ""}
-                  {dateLabel}
+                  {compactView
+                    ? dateLabel
+                    : overdue
+                      ? `Overdue · ${dateLabel}`
+                      : dateLabel}
                 </span>
               )}
-              {task.focus_today && !done && (
-                <span>
-                  <Star size={12} fill="currentColor" /> Today’s focus
+              {task.focus_today && !done && !focusView && (
+                <span
+                  className={rowStyles["focus-meta"]}
+                  role="img"
+                  aria-label="Marked as today’s focus"
+                  title="Marked as today’s focus"
+                >
+                  <Star size={12} fill="currentColor" aria-hidden="true" />
+                  {!searchView && (
+                    <>
+                      <span className={rowStyles["focus-label-full"]}>
+                        Today’s focus
+                      </span>
+                      <span
+                        className={rowStyles["focus-label-compact"]}
+                        aria-hidden="true"
+                      >
+                        Focus
+                      </span>
+                    </>
+                  )}
+                </span>
+              )}
+              {subtaskCount > 0 && (
+                <span
+                  className={rowStyles["subtask-count"]}
+                  aria-label={`${subtaskCount} ${subtaskCount === 1 ? "subtask" : "subtasks"}`}
+                  title={`Contains ${subtaskCount} ${subtaskCount === 1 ? "subtask" : "subtasks"}`}
+                >
+                  <ListChecks size={12} aria-hidden="true" /> {subtaskCount}
+                </span>
+              )}
+              {parentTitle && (
+                <span
+                  className={rowStyles["parent-context"]}
+                  title={`Subtask of ${parentTitle}`}
+                  aria-label={`Subtask of ${parentTitle}`}
+                  role="img"
+                >
+                  {compactView ? (
+                    <CornerDownRight size={12} aria-hidden="true" />
+                  ) : (
+                    <>↳ {parentTitle}</>
+                  )}
                 </span>
               )}
             </span>
@@ -212,6 +298,7 @@ export function TaskRow({
               size="sm"
               data-advance
               className={rowStyles["advance-button"]}
+              title={task.status === "todo" ? "Start task" : "Mark as done"}
               aria-label={
                 task.status === "todo"
                   ? `Start ${task.title}`
@@ -251,6 +338,7 @@ export function TaskRow({
                 variant="ghost"
                 size="icon"
                 aria-label={`More options for ${task.title}`}
+                title={`More options for ${task.title}`}
                 disabled={busy}
               >
                 <MoreHorizontal size={19} />

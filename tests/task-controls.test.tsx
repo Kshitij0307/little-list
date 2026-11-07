@@ -200,6 +200,96 @@ describe("shared task controls", () => {
     ).toBeNull();
   });
 
+  it("shows a compact subtask count in the task metadata", () => {
+    render(
+      <ul>
+        <TaskRow
+          task={{
+            ...task,
+            due_date: "2026-12-31",
+            focus_today: true,
+            pinned: true,
+          }}
+          subtaskCount={4}
+          busy={false}
+          onEdit={vi.fn()}
+          onUpdate={vi.fn()}
+        />
+      </ul>,
+    );
+
+    expect(screen.getByLabelText("4 subtasks")).toBeTruthy();
+    expect(screen.getByText("4")).toBeTruthy();
+    expect(screen.getByLabelText("4 subtasks").getAttribute("title")).toBe(
+      "Contains 4 subtasks",
+    );
+    expect(screen.getByLabelText("Pinned").getAttribute("title")).toBe(
+      "Pinned",
+    );
+    expect(
+      screen
+        .getByRole("button", { name: `Complete ${task.title}` })
+        .getAttribute("title"),
+    ).toBe("Mark as done");
+    expect(
+      screen
+        .getByRole("button", { name: `Start ${task.title}` })
+        .getAttribute("title"),
+    ).toBe("Start task");
+    expect(
+      screen
+        .getByRole("button", { name: `More options for ${task.title}` })
+        .getAttribute("title"),
+    ).toBe(`More options for ${task.title}`);
+    expect(screen.getByText("Dec 31").getAttribute("title")).toBe(
+      "Due date: Dec 31",
+    );
+    expect(
+      screen
+        .getByRole("img", { name: "Marked as today’s focus" })
+        .getAttribute("title"),
+    ).toBe("Marked as today’s focus");
+    expect(screen.getByText("Focus").getAttribute("aria-hidden")).toBe("true");
+    expect(
+      screen.getByRole("img", { name: "Marked as today’s focus" }),
+    ).toBeTruthy();
+  });
+
+  it("uses compact, labeled metadata in focus view without a redundant focus star", () => {
+    render(
+      <ul>
+        <TaskRow
+          task={{
+            ...task,
+            status: "in_progress",
+            due_date: "2026-12-31",
+            focus_today: true,
+          }}
+          showStatus
+          focusView
+          parentTitle="Feature branch"
+          subtaskCount={4}
+          busy={false}
+          onEdit={vi.fn()}
+          onUpdate={vi.fn()}
+        />
+      </ul>,
+    );
+
+    expect(screen.getByRole("img", { name: "In progress" })).toBeTruthy();
+    expect(screen.getByText("In progress")).toBeTruthy();
+    expect(screen.getByText("Dec 31")).toBeTruthy();
+    expect(
+      screen.getByRole("img", { name: "Subtask of Feature branch" }),
+    ).toBeTruthy();
+    expect(screen.getByLabelText("4 subtasks")).toBeTruthy();
+    expect(screen.getByText("4")).toBeTruthy();
+    expect(
+      screen.queryByRole("img", { name: "Marked as today’s focus" }),
+    ).toBeNull();
+    expect(screen.queryByText("Focus")).toBeNull();
+  });
+
   it("copies the task title from the row action", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
