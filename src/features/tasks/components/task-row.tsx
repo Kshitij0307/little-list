@@ -29,6 +29,15 @@ import {
   type Task,
   type TaskPatch,
 } from "../domain/task";
+import type { TaskRowMotion } from "./task-row-motion";
+
+const PAPER_FLECKS = Array.from({ length: 12 }, (_, index) => ({
+  left: `${8 + index * 7}%`,
+  top: `${28 + (index % 3) * 19}%`,
+  "--fleck-x": `${(index % 2 ? 1 : -1) * (14 + (index % 4) * 8)}px`,
+  "--fleck-y": `${((index % 3) - 1) * (20 + (index % 5) * 5)}px`,
+  "--fleck-delay": `${(index % 4) * 24}ms`,
+})) as CSSProperties[];
 
 export function TaskRow({
   task,
@@ -48,6 +57,8 @@ export function TaskRow({
   justDropped,
   dropPosition,
   shiftDirection,
+  motion,
+  motionHeight,
 }: {
   task: Task;
   subtaskCount?: number;
@@ -70,6 +81,8 @@ export function TaskRow({
   justDropped?: boolean;
   dropPosition?: "before" | "after";
   shiftDirection?: "up" | "down";
+  motion?: TaskRowMotion;
+  motionHeight?: number;
 }) {
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,6 +121,7 @@ export function TaskRow({
       data-task-id={task.id}
       data-dragging={dragging || undefined}
       data-shift={shiftDirection}
+      data-motion={motion}
       className={cn(
         rowStyles["task-row"],
         compactView && rowStyles["compact-view"],
@@ -120,11 +134,16 @@ export function TaskRow({
         dropPosition === "after" && rowStyles["drop-after"],
         shiftDirection === "up" && rowStyles["shift-up"],
         shiftDirection === "down" && rowStyles["shift-down"],
+        motion && rowStyles[motion],
       )}
       style={
         dragging
           ? ({ "--drag-offset-y": `${dragOffsetY ?? 0}px` } as CSSProperties)
-          : undefined
+          : motion === "paper-flecks"
+            ? ({
+                "--motion-height": `${motionHeight ?? 68}px`,
+              } as CSSProperties)
+            : undefined
       }
     >
       <div data-task-primary className={rowStyles["task-primary"]}>
@@ -174,6 +193,13 @@ export function TaskRow({
                 <Check size={18} strokeWidth={2.2} />
               ) : (
                 <Circle size={22} strokeWidth={1.3} />
+              )}
+              {motion === "pencil-rule" && (
+                <Check
+                  className={rowStyles["pencil-check"]}
+                  size={18}
+                  strokeWidth={2.2}
+                />
               )}
             </span>
           </button>
@@ -456,6 +482,16 @@ export function TaskRow({
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
         </div>
+      )}
+      {motion && motion !== "paper-flecks" && (
+        <span className={rowStyles["motion-rule"]} aria-hidden="true" />
+      )}
+      {motion === "paper-flecks" && (
+        <span className={rowStyles["motion-flecks"]} aria-hidden="true">
+          {PAPER_FLECKS.map((style, index) => (
+            <span key={index} style={style} />
+          ))}
+        </span>
       )}
     </li>
   );

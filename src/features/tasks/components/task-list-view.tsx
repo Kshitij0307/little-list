@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { mainTasks, sortTasks, type TaskStatus } from "../domain/task";
+import { mainTasks, sortTasksBy, type TaskStatus } from "../domain/task";
 import { useTaskContext } from "../hooks/tasks-provider";
 import {
   useFlagQueryParam,
@@ -82,7 +82,7 @@ export function TaskListView() {
   const roots = mainTasks(tasks);
   const hasSearchQuery = !!query.trim();
   const showAllStatuses = focusToday || hasSearchQuery;
-  const visible = sortTasks(
+  const visible = sortTasksBy(
     tasks.filter(
       (task) =>
         !task.deleted_at &&
@@ -93,7 +93,7 @@ export function TaskListView() {
           .toLowerCase()
           .includes(query.trim().toLowerCase()),
     ),
-    status,
+    focusToday ? "status" : "manual",
   );
   const selectableVisible = showAllStatuses
     ? []

@@ -116,15 +116,43 @@ export function localDate(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+export const TASK_SORT_CRITERIA = ["manual", "status"] as const;
+export type TaskSortCriterion = (typeof TASK_SORT_CRITERIA)[number];
+
+const STATUS_SORT_PRIORITY: Record<TaskStatus, number> = {
+  todo: 0,
+  in_progress: 1,
+  done: 2,
+};
+
+function compareManualOrder(a: Task, b: Task): number {
+  return (
+    Number(b.pinned) - Number(a.pinned) ||
+    a.rank.localeCompare(b.rank) ||
+    a.id.localeCompare(b.id)
+  );
+}
+
+const TASK_SORT_COMPARATORS: Record<
+  TaskSortCriterion,
+  (a: Task, b: Task) => number
+> = {
+  manual: compareManualOrder,
+  status: (a, b) =>
+    STATUS_SORT_PRIORITY[a.status] - STATUS_SORT_PRIORITY[b.status] ||
+    compareManualOrder(a, b),
+};
+
+export function sortTasksBy(
+  tasks: Task[],
+  criterion: TaskSortCriterion = "manual",
+): Task[] {
+  return [...tasks].sort(TASK_SORT_COMPARATORS[criterion]);
+}
+
 export function sortTasks(tasks: Task[], _status: TaskStatus): Task[] {
   void _status;
-  return [...tasks].sort((a, b) => {
-    return (
-      Number(b.pinned) - Number(a.pinned) ||
-      a.rank.localeCompare(b.rank) ||
-      a.id.localeCompare(b.id)
-    );
-  });
+  return sortTasksBy(tasks);
 }
 
 // Validate the full ancestry so moving a task cannot make it its own descendant.

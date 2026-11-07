@@ -15,12 +15,26 @@ import {
   STATUSES,
   STATUS_LABELS,
   type Task,
+  type TaskPatch,
   type TaskStatus,
 } from "../domain/task";
 import { useTaskContext } from "../hooks/tasks-provider";
 import type { TaskSelection } from "../hooks/use-task-selection";
 import { TaskRow } from "./task-row";
+import {
+  taskRowMotion,
+  TASK_ROW_MOTION_MS,
+  type TaskRowMotion,
+} from "./task-row-motion";
 import styles from "./selectable-task-list.module.css";
+
+type AnimatedTask = {
+  task: Task;
+  index: number;
+  scope: string;
+  height: number;
+  kind: TaskRowMotion;
+};
 
 let touchDragLockCount = 0;
 
@@ -144,17 +158,62 @@ export function SelectableTaskList({
   const [dragOffsetY, setDragOffsetY] = useState(0);
   const [settledId, setSettledId] = useState<string | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [animatedTask, setAnimatedTask] = useState<AnimatedTask | null>(null);
+  const animationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const animationPending = useRef(false);
   const [dropPosition, setDropPosition] = useState<number | null>(null);
   const idPrefix = parentId ? "subtask" : "task";
+  const currentMotionScope = `${parentId ?? "root"}:${status}`;
+  const activeAnimation =
+    animatedTask?.scope === currentMotionScope ? animatedTask : null;
+  const renderedTasks = activeAnimation
+    ? (() => {
+        const items = tasks.filter(
+          (task) => task.id !== activeAnimation.task.id,
+        );
+        items.splice(activeAnimation.index, 0, activeAnimation.task);
+        return items;
+      })()
+    : tasks;
 
   useEffect(
     () => () => {
       if (drag.current?.timer) clearTimeout(drag.current.timer);
       if (drag.current?.pointerType === "touch") unlockTouchSelection();
       if (settleTimer.current) clearTimeout(settleTimer.current);
+      if (animationTimer.current) clearTimeout(animationTimer.current);
     },
     [],
   );
+
+  function updateWithMotion(task: Task, patch: TaskPatch, label?: string) {
+    if (animationPending.current) return;
+    const kind = taskRowMotion(task.status, patch);
+    if (
+      kind &&
+      !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    ) {
+      const row = Array.from(
+        container.current?.querySelectorAll<HTMLElement>("[data-task-row]") ??
+          [],
+      ).find((element) => element.dataset.taskId === task.id);
+      animationPending.current = true;
+      setAnimatedTask({
+        task,
+        index: tasks.findIndex((item) => item.id === task.id),
+        scope: currentMotionScope,
+        height: row?.getBoundingClientRect().height || 68,
+        kind,
+      });
+      if (animationTimer.current) clearTimeout(animationTimer.current);
+      animationTimer.current = setTimeout(() => {
+        animationPending.current = false;
+        setAnimatedTask(null);
+        animationTimer.current = null;
+      }, TASK_ROW_MOTION_MS);
+    }
+    void update(task.id, patch, label);
+  }
 
   function resetDrag() {
     if (drag.current?.timer) clearTimeout(drag.current.timer);
@@ -412,7 +471,7 @@ export function SelectableTaskList({
           </div>
         )
       )}
-      {tasks.length ? (
+      {renderedTasks.length ? (
         <ul
           className={[className, draggingId && styles["dragging-list"]]
             .filter(Boolean)
@@ -424,14 +483,28 @@ export function SelectableTaskList({
             suppressClick.current = false;
           }}
         >
-          {tasks.map((task) => {
+          {renderedTasks.map((task) => {
             const taskDragIndex = dragGroup.findIndex(
               (item) => item.id === task.id,
             );
             return (
               <TaskRow
-                key={task.id}
+                key={
+                  activeAnimation?.task.id === task.id
+                    ? `${task.id}:motion`
+                    : task.id
+                }
                 task={task}
+                motion={
+                  activeAnimation?.task.id === task.id
+                    ? activeAnimation.kind
+                    : undefined
+                }
+                motionHeight={
+                  activeAnimation?.task.id === task.id
+                    ? activeAnimation.height
+                    : undefined
+                }
                 showStatus={showStatus}
                 compactView={compactView}
                 focusView={focusView}
@@ -442,9 +515,11 @@ export function SelectableTaskList({
                     ? taskTitles.get(task.parent_id)
                     : undefined
                 }
-                busy={busy}
+                busy={busy || !!activeAnimation}
                 onEdit={() => onOpenTask(task.id)}
-                onUpdate={(patch, label) => void update(task.id, patch, label)}
+                onUpdate={(patch, label) =>
+                  updateWithMotion(task, patch, label)
+                }
                 selection={
                   active
                     ? {

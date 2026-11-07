@@ -20,7 +20,7 @@
   transform: translate3d(0, var(--drag-offset-y), 0) scale(1.035);
   border-radius: 12px;
   outline: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line));
-  background: var(--surface);
+  background: var(--surface-alt);
   box-shadow:
     0 20px 38px rgb(24 25 19 / 24%),
     0 5px 12px rgb(24 25 19 / 16%);
@@ -61,6 +61,11 @@
 }
 .task-row:last-child {
   border-bottom: 0;
+}
+.task-row:not(.dragging):not(.task-selected):hover,
+.task-row:not(.dragging):not(.task-selected):active,
+.task-row:not(.dragging):not(.task-selected):focus-within {
+  background: var(--surface-alt);
 }
 .task-primary {
   display: flex;
@@ -121,6 +126,7 @@
   color: var(--accent);
 }
 .check-icon {
+  position: relative;
   display: grid;
   place-items: center;
   width: 28px;
@@ -170,6 +176,10 @@
 .dragging .reorder-surface {
   cursor: grabbing;
   touch-action: none;
+}
+.dragging .task-copy:hover:not(:disabled),
+.dragging .task-copy:focus-visible:not(:disabled) {
+  background: transparent;
 }
 .task-copy:hover:not(:disabled),
 .task-copy:focus-visible {
@@ -295,6 +305,140 @@
   min-width: 68px;
   padding-inline: 9px;
 }
+.motion-rule {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.rule-write .motion-rule,
+.pencil-rule .motion-rule {
+  transform-origin: left;
+  animation: rule-write 760ms ease-out both;
+}
+.rule-rewind .motion-rule,
+.rule-rewind-check .motion-rule {
+  transform-origin: left;
+  animation: rule-rewind 760ms ease-in-out both;
+}
+.pencil-check {
+  position: absolute;
+  color: var(--accent);
+}
+.pencil-rule .pencil-check path {
+  stroke-dasharray: 24;
+  animation: pencil-write 760ms ease-out both;
+}
+.rule-rewind-check .check-icon > svg:first-child path {
+  stroke-dasharray: 24;
+  animation: pencil-write 760ms ease-in reverse both;
+}
+.paper-flecks {
+  min-height: 0;
+  overflow: hidden;
+  animation: paper-collapse 760ms ease-in both;
+}
+.paper-flecks > .task-primary,
+.paper-flecks > .task-actions {
+  animation: paper-content-fade 760ms ease-in both;
+}
+.motion-flecks {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+}
+.motion-flecks > span {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 1px;
+  background: var(--accent);
+  opacity: 0;
+  animation: paper-fleck 690ms ease-out var(--fleck-delay) both;
+}
+@keyframes rule-write {
+  0% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  20% {
+    opacity: 0.85;
+  }
+  72% {
+    opacity: 0.85;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
+@keyframes rule-rewind {
+  0% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+  20% {
+    opacity: 0.85;
+  }
+  78% {
+    opacity: 0.85;
+    transform: scaleX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+}
+@keyframes pencil-write {
+  0%,
+  20% {
+    stroke-dashoffset: 24;
+  }
+  78%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes paper-collapse {
+  0%,
+  18% {
+    height: var(--motion-height);
+    border-bottom-color: var(--line);
+  }
+  100% {
+    height: 0;
+    border-bottom-color: transparent;
+  }
+}
+@keyframes paper-content-fade {
+  0%,
+  25% {
+    opacity: 1;
+  }
+  85%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes paper-fleck {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  25% {
+    opacity: 0.75;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--fleck-x), var(--fleck-y)) rotate(70deg);
+  }
+}
 @keyframes appear {
   from {
     opacity: 0;
@@ -315,6 +459,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .task-row {
+    animation: none;
     transition: none;
   }
 }
